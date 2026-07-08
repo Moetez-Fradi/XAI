@@ -32,8 +32,9 @@ import bench_common
 from bench_common import (
     DIMENSIONS,
     NUM_QUERIES,
+    SIFT_DIR,
+    build_dataset,
     ensure_output_dirs,
-    generate_dataset,
     init_experiment_run,
 )
 from bench_tests import (
@@ -67,6 +68,23 @@ def parse_args() -> argparse.Namespace:
         help="XQdrant REST base URL (defaults to --qdrant-url)",
     )
     parser.add_argument(
+        "--dataset",
+        choices=["synthetic", "sift1m"],
+        default=os.environ.get("BENCH_DATASET", "synthetic"),
+        help="Corpus: 'synthetic' (Dot, chosen dims) or 'sift1m' (Euclid, D=128)",
+    )
+    parser.add_argument(
+        "--sift-dir",
+        default=os.environ.get("SIFT_DIR", str(SIFT_DIR)),
+        help="Directory holding sift_base.fvecs / sift_query.fvecs / sift_groundtruth.ivecs",
+    )
+    parser.add_argument(
+        "--num-vectors",
+        type=int,
+        default=(int(os.environ["BENCH_NUM_VECTORS"]) if os.environ.get("BENCH_NUM_VECTORS") else None),
+        help="Cap corpus size (e.g. subsample SIFT1M for a quick run)",
+    )
+    parser.add_argument(
         "--dimensions",
         type=int,
         nargs="+",
@@ -74,7 +92,7 @@ def parse_args() -> argparse.Namespace:
             int(x)
             for x in os.environ.get("BENCH_DIMENSIONS", " ".join(str(d) for d in DIMENSIONS)).split()
         ],
-        help="Vector dimensions to benchmark (default: 768 1536)",
+        help="Vector dimensions to benchmark (synthetic only; default: 768 1536)",
     )
     parser.add_argument(
         "--queries",
@@ -135,13 +153,32 @@ def main() -> int:
         ]
         return validate_main()
 
+    # Build the dataset(s): SIFT1M is a single fixed corpus; synthetic sweeps dimensions.
+    if args.dataset == "sift1m":
+        datasets = [
+            build_dataset(
+                "sift1m",
+                sift_dir=args.sift_dir,
+                num_vectors=args.num_vectors,
+                num_queries=args.queries,
+            )
+        ]
+    else:
+        datasets = [
+            build_dataset("synthetic", dimension=d, num_vectors=args.num_vectors)
+            for d in args.dimensions
+        ]
+
     run = init_experiment_run(
         run_id=args.experiment_id,
         metadata={
             "mode": args.mode,
+            "dataset": args.dataset,
+            "distance": datasets[0].distance,
             "qdrant_url": args.qdrant_url,
             "xqdrant_url": args.xqdrant_url,
-            "dimensions": args.dimensions,
+            "dimensions": [d.dimension for d in datasets],
+            "num_vectors": datasets[0].num_vectors,
             "queries": args.queries,
             "tests": args.tests,
         },
@@ -153,7 +190,8 @@ def main() -> int:
     print("=" * 72)
     print(f"Experiment:  {run.root}")
     print(f"Mode:        {args.mode}")
-    print(f"Dimensions:  {args.dimensions}")
+    print(f"Dataset:     {args.dataset} ({datasets[0].distance}, N={datasets[0].num_vectors})")
+    print(f"Dimensions:  {[d.dimension for d in datasets]}")
     print(f"Queries:     {args.queries}")
     print(f"Results dir: {bench_common.RESULTS_DIR}")
     print(f"Plots dir:   {bench_common.PLOTS_DIR}")
@@ -165,12 +203,12 @@ def main() -> int:
     evaluated_dims: list[int] = []
     suite_start = time.perf_counter()
 
-    for dimension in args.dimensions:
-        print(f"\n--- Dimension D={dimension} ---")
-        dataset = generate_dataset(dimension=dimension)
+    for dataset in datasets:
+        dimension = dataset.dimension
+        print(f"\n--- Dataset {dataset.name} (D={dimension}) ---")
         print(
             f"Dataset: {dataset.num_vectors} vectors, "
-            f"{dataset.num_queries} queries, seed={dataset.name}"
+            f"{dataset.num_queries} queries, distance={dataset.distance}"
         )
 
         setup = not args.no_provision

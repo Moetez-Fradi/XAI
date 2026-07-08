@@ -44,6 +44,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ef-search", type=int, default=DEFAULT_EF_SEARCH)
     p.add_argument("--ratios", type=float, nargs="+", default=DEFAULT_RATIOS)
     p.add_argument("--no-provision", action="store_true")
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
@@ -57,12 +58,14 @@ def main() -> int:
         qdrant_url=args.qdrant_url, xqdrant_url=xqdrant_url,
         requires_xqdrant_change="none (focus.masked already ships)",
         sweep={"ratios": args.ratios, "ef_search": args.ef_search, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[option1] experiment: {run.root}")
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
+        norms = cr.full_norms_sq(dataset)
 
         client = None
         if args.mode == "http":
@@ -78,8 +81,8 @@ def main() -> int:
             recalls: list[float] = []
             unsupported = 0
 
-            for q in queries:
-                gt_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k)  # full-vector GT
+            for i, q in enumerate(queries):
+                gt_ids = cr.full_top_k(dataset, i, q, args.k, norms)  # full-vector GT
                 if args.mode == "http":
                     body = cr.focus_body(q, args.k, args.ef_search, dims, masked=True)
                     out = client.query(body)

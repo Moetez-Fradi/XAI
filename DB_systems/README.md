@@ -24,6 +24,45 @@ See `[../working.md](../working.md)` for full design notes.
 
 
 
+## Datasets
+
+Two corpora are supported via `--dataset`:
+
+| `--dataset` | Vectors | D | Distance | Ground truth |
+|-------------|---------|---|----------|--------------|
+| `synthetic` (default) | random Gaussian, L2-normalized | 768 / 1536 (`--dimensions`) | Dot | computed exactly |
+| `sift1m` | SIFT1M descriptors | 128 | **Euclid** | bundled top-100 (full runs) |
+
+SIFT1M is the realistic option: real correlated dimensions, so subspace/masked recall is meaningful (random vectors have near-zero subspace coherence). Fetch it once:
+
+```bash
+cd DB_systems
+./fetch_sift.sh            # downloads into data/sift/ (~161MB)
+```
+
+Then run the suite against it (the collection is auto-created with Euclid distance):
+
+```bash
+BENCH_MODE=http BENCH_DATASET=sift1m \
+QDRANT_URL=http://127.0.0.1:6335 XQDRANT_URL=http://127.0.0.1:6333 \
+./run_bench.sh --dataset sift1m --queries 500
+```
+
+Quick subsampled iteration (invalidates bundled GT → recomputed):
+
+```bash
+python bench_suite.py --mode http --dataset sift1m --num-vectors 100000 --queries 200
+```
+
+Research scripts accept the same flags, e.g.:
+
+```bash
+python research/option1_naive_masked/run_option1_recall_collapse.py \
+    --mode http --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --queries 200
+```
+
+Override the data location with `--sift-dir` or `SIFT_DIR=/path/to/sift`.
+
 ## Layout
 
 ```

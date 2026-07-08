@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--queries", type=int, default=200)
     p.add_argument("--k", type=int, default=TOP_K)
     p.add_argument("--ratios", type=float, nargs="+", default=DEFAULT_RATIOS)
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
@@ -43,22 +44,25 @@ def main() -> int:
         mode="offline", dimensions=args.dimensions, queries=args.queries,
         requires_xqdrant_change="none (pure offline NumPy)",
         sweep={"ratios": args.ratios, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[xcut2] experiment: {run.root}")
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
+        norms = cr.full_norms_sq(dataset)
         rows: list[dict] = []
 
         for ratio in args.ratios:
             dims = cr.subspace_indices(dim, ratio)
+            subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
             jaccards: list[float] = []
             overlaps: list[float] = []  # |intersection| / k  (== recall of subspace vs full)
-            for q in queries:
-                full_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k)
-                sub_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k, dim_indices=dims)
-                fs, ss = set(full_ids.tolist()), set(sub_ids.tolist())
+            for i, q in enumerate(queries):
+                full_ids = cr.full_top_k(dataset, i, q, args.k, norms)
+                sub_ids, _ = subspace_gt.top_k(q, args.k)
+                fs, ss = set(int(x) for x in full_ids), set(sub_ids.tolist())
                 inter = len(fs & ss)
                 union = len(fs | ss)
                 jaccards.append(inter / union if union else 1.0)

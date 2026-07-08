@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alphas", type=float, nargs="+", default=DEFAULT_ALPHAS)
     p.add_argument("--layers", type=int, nargs="+", default=DEFAULT_LAYERS)
     p.add_argument("--no-provision", action="store_true")
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
@@ -55,13 +56,15 @@ def main() -> int:
         requires_xqdrant_change="focus.alpha (Option 4); pair with focus.mask_from_layer",
         sweep={"ratio": args.ratio, "alphas": args.alphas, "layers": args.layers,
                "ef_search": args.ef_search, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[option4] experiment: {run.root}")
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
         dims = cr.subspace_indices(dim, args.ratio)
+        subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
 
         client = None
         if args.mode == "http":
@@ -86,7 +89,7 @@ def main() -> int:
                 recalls: list[float] = []
                 unsupported = 0
                 for q in queries:
-                    gt_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k, dim_indices=dims)
+                    gt_ids, _ = subspace_gt.top_k(q, args.k)
                     if args.mode == "http":
                         body = cr.focus_body(q, args.k, args.ef_search, dims,
                                              masked=True, mask_from_layer=layer, alpha=alpha)

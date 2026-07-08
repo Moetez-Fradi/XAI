@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--k", type=int, default=TOP_K)
     p.add_argument("--ef-search", type=int, default=DEFAULT_EF_SEARCH)
     p.add_argument("--ratios", type=float, nargs="+", default=DEFAULT_RATIOS)
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
@@ -52,7 +53,7 @@ def _req(session, url, method, path, body=None):
     return r.json()
 
 
-def _build_projected_collection(session, url, name, vectors, ids) -> float:
+def _build_projected_collection(session, url, name, vectors, ids, distance="Dot") -> float:
     """Create a stock collection over projected vectors; return build wall-time (s)."""
     dsub = int(vectors.shape[1])
     try:
@@ -60,7 +61,7 @@ def _build_projected_collection(session, url, name, vectors, ids) -> float:
     except requests.HTTPError:
         pass
     _req(session, url, "PUT", f"/collections/{name}",
-         {"vectors": {"size": dsub, "distance": "Dot"},
+         {"vectors": {"size": dsub, "distance": distance},
           "hnsw_config": {"m": 16, "ef_construct": 200}})
     start = time.perf_counter()
     batch = 256
@@ -79,11 +80,12 @@ def main() -> int:
         xqdrant_url=args.xqdrant_url,
         requires_xqdrant_change="projected-index build path + query routing (ceiling measurable now via stock collection)",
         sweep={"ratios": args.ratios, "ef_search": args.ef_search, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[option3] experiment: {run.root}")
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
         session = requests.Session() if args.mode == "http" else None
         rows: list[dict] = []
@@ -92,16 +94,18 @@ def main() -> int:
             dims = cr.subspace_indices(dim, ratio)
             dsub = len(dims)
             mem_bytes = dataset.num_vectors * dsub * 4  # f32 vector-store proxy
+            subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
 
             if args.mode == "http":
                 name = f"proj_{dataset.name}_r{int(ratio * 100)}"
                 proj_vecs = np.ascontiguousarray(dataset.vectors[:, dims])
                 build_s = _build_projected_collection(session, args.xqdrant_url, name,
-                                                       proj_vecs, dataset.ids)
+                                                       proj_vecs, dataset.ids,
+                                                       distance=dataset.distance)
                 lat = LatencyStats()
                 recalls: list[float] = []
                 for q in queries:
-                    gt_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k, dim_indices=dims)
+                    gt_ids, _ = subspace_gt.top_k(q, args.k)
                     sub_q = np.ascontiguousarray(q[dims])
                     start = time.perf_counter_ns()
                     payload = _req(session, args.xqdrant_url, "POST",

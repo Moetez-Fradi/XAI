@@ -23,6 +23,7 @@ from bench_common import (
     WARMUP_QUERIES,
     Dataset,
     LatencyStats,
+    SubspaceGT,
     brute_force_top_k,
     detect_physical_cores,
     recall_at_k,
@@ -59,6 +60,21 @@ def run_test_latency_recall(
     queries = _select_queries(dataset, num_queries)
     rows: list[dict] = []
 
+    # Ground truth: use the dataset's bundled top-k when available (e.g. SIFT1M),
+    # otherwise compute it exactly under the dataset's own distance metric.
+    full_norms_sq = None
+    if dataset.distance.lower() in ("euclid", "euclidean", "l2") and dataset.ground_truth is None:
+        full_norms_sq = np.einsum("ij,ij->i", dataset.vectors, dataset.vectors)
+
+    def _ground_truth(idx: int, query: np.ndarray) -> np.ndarray:
+        if dataset.ground_truth is not None:
+            return dataset.ground_truth[idx][:k]
+        gt_ids, _ = brute_force_top_k(
+            query, dataset.vectors, k,
+            distance=dataset.distance, vectors_norm_sq=full_norms_sq,
+        )
+        return gt_ids
+
     for ef_search in EF_SEARCH_VALUES:
         vanilla.warmup(queries, WARMUP_QUERIES)
         xqdrant.warmup(queries, WARMUP_QUERIES)
@@ -68,8 +84,8 @@ def run_test_latency_recall(
         vanilla_recalls: list[float] = []
         xqdrant_recalls: list[float] = []
 
-        for query in queries:
-            gt_ids, _ = brute_force_top_k(query, dataset.vectors, k)
+        for q_idx, query in enumerate(queries):
+            gt_ids = _ground_truth(q_idx, query)
 
             v_result, v_ns = vanilla.vanilla_search(query, k, ef_search)
             vanilla_stats.record(v_ns)
@@ -354,15 +370,16 @@ def run_test_masked_subspace(
         dim_indices = _subspace_indices(dataset.dimension, ratio)
         backend.warmup(queries, WARMUP_QUERIES)
 
+        # Precompute the subspace projection + norms once per ratio (SIFT1M-scale friendly).
+        subspace_gt = SubspaceGT(dataset.vectors, dim_indices, distance=dataset.distance)
+
         rescore_stats = LatencyStats()
         masked_stats = LatencyStats()
         rescore_recalls: list[float] = []
         masked_recalls: list[float] = []
 
         for query in queries:
-            gt_ids, _ = brute_force_top_k(
-                query, dataset.vectors, k, dim_indices=dim_indices
-            )
+            gt_ids, _ = subspace_gt.top_k(query, k)
 
             res_result, res_ns = backend.vanilla_search(
                 query,

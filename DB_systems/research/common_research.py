@@ -37,9 +37,12 @@ if str(DB_SYSTEMS_DIR) not in sys.path:
 
 import bench_common  # noqa: E402
 from bench_common import (  # noqa: E402
+    SIFT_DIR,
     Dataset,
     LatencyStats,
+    SubspaceGT,
     brute_force_top_k,
+    build_dataset,
     generate_dataset,
     init_experiment_run,
     recall_at_k,
@@ -100,6 +103,54 @@ def subspace_indices(dimension: int, ratio: float, seed: int = 0) -> np.ndarray:
     rng = np.random.default_rng(seed + int(ratio * 10_000))
     count = max(1, int(round(dimension * ratio)))
     return np.sort(rng.choice(dimension, size=count, replace=False))
+
+
+# ---------------------------------------------------------------------------
+# Dataset selection shared across research scripts
+# ---------------------------------------------------------------------------
+
+
+def add_dataset_args(parser) -> None:
+    """Add --dataset / --sift-dir / --num-vectors to a research script's argparser."""
+    parser.add_argument("--dataset", choices=["synthetic", "sift1m"], default="synthetic",
+                        help="Corpus: synthetic (Dot) or sift1m (Euclid, D=128)")
+    parser.add_argument("--sift-dir", default=str(SIFT_DIR),
+                        help="Directory with sift_base.fvecs / sift_query.fvecs / sift_groundtruth.ivecs")
+    parser.add_argument("--num-vectors", type=int, default=None,
+                        help="Cap corpus size (subsample SIFT1M for quick runs)")
+
+
+def iter_datasets(args):
+    """
+    Yield the dataset(s) for a run. SIFT1M is one fixed corpus (D=128); synthetic sweeps
+    ``args.dimensions``. Works whether or not add_dataset_args was used (defaults to synthetic).
+    """
+    kind = getattr(args, "dataset", "synthetic")
+    num_vectors = getattr(args, "num_vectors", None)
+    num_queries = getattr(args, "queries", None)
+    if kind == "sift1m":
+        yield build_dataset("sift1m", sift_dir=getattr(args, "sift_dir", str(SIFT_DIR)),
+                            num_vectors=num_vectors, num_queries=num_queries)
+    else:
+        for dim in args.dimensions:
+            yield build_dataset("synthetic", dimension=dim, num_vectors=num_vectors)
+
+
+def full_norms_sq(dataset: Dataset) -> np.ndarray | None:
+    """Precompute row norms for Euclid full-space GT (None for similarity metrics)."""
+    if dataset.distance.lower() in ("euclid", "euclidean", "l2"):
+        return np.einsum("ij,ij->i", dataset.vectors, dataset.vectors)
+    return None
+
+
+def full_top_k(dataset: Dataset, idx: int, query: np.ndarray, k: int,
+               norms_sq: np.ndarray | None = None) -> np.ndarray:
+    """Full-space top-k ids: bundled ground truth if present, else exact under the metric."""
+    if dataset.ground_truth is not None and idx < len(dataset.ground_truth):
+        return dataset.ground_truth[idx][:k]
+    ids, _ = brute_force_top_k(query, dataset.vectors, k,
+                               distance=dataset.distance, vectors_norm_sq=norms_sq)
+    return ids
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +307,8 @@ def simulated_masked(
     ratio = len(dims) / max(1, dimension)
 
     # Exact subspace top-k as the "returned" set, then perturb to model misrouting.
-    gt_ids, _ = brute_force_top_k(query, dataset.vectors, k, dim_indices=dims)
+    gt_ids, _ = brute_force_top_k(query, dataset.vectors, k, dim_indices=dims,
+                                  distance=dataset.distance)
 
     # Fraction of layers actually masked. Option 2 semantics: mask_from_layer=0 masks every
     # layer (current Option 1, worst recall); mask_from_layer=max_layer masks none (best recall).
@@ -392,12 +444,18 @@ __all__ = [
     "LatencyStats",
     "QueryOutcome",
     "ResearchClient",
+    "SubspaceGT",
+    "add_dataset_args",
     "bench_common",
     "brute_force_top_k",
+    "build_dataset",
     "focus_body",
+    "full_norms_sq",
+    "full_top_k",
     "generate_dataset",
     "heatmap",
     "init_research_run",
+    "iter_datasets",
     "line_plot",
     "make_backend",
     "recall_at_k",

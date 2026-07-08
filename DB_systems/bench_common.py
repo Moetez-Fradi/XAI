@@ -40,6 +40,9 @@ DEFAULT_ATTRIBUTION_M = 10
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 EXPERIMENTS_ROOT = PACKAGE_DIR / "experiments"
+# Default location for the SIFT1M corpus (sift_base.fvecs, sift_query.fvecs,
+# sift_groundtruth.ivecs). Override with --sift-dir / SIFT_DIR.
+SIFT_DIR = Path(os.environ.get("SIFT_DIR", str(PACKAGE_DIR / "data" / "sift")))
 
 # Set per run via init_experiment_run(); legacy paths kept for imports.
 RESULTS_DIR = PACKAGE_DIR / "results"
@@ -125,13 +128,15 @@ def active_experiment() -> ExperimentRun | None:
 
 @dataclass(frozen=True)
 class Dataset:
-    """Deterministic synthetic vector corpus and query set."""
+    """A vector corpus + query set with its native distance metric."""
 
     name: str
     dimension: int
     vectors: np.ndarray  # shape (N, D), float32
     queries: np.ndarray  # shape (Q, D), float32
     ids: np.ndarray  # shape (N,), int64
+    distance: str = "Dot"  # Qdrant metric: "Dot" | "Cosine" | "Euclid" | "Manhattan"
+    ground_truth: np.ndarray | None = None  # optional (Q, G) full-space top-G ids
 
     @property
     def num_vectors(self) -> int:
@@ -168,7 +173,118 @@ def generate_dataset(
         vectors=vectors,
         queries=queries,
         ids=ids,
+        distance=DEFAULT_DISTANCE,
     )
+
+
+# ---------------------------------------------------------------------------
+# SIFT1M loader (.fvecs / .ivecs, Euclidean)
+# ---------------------------------------------------------------------------
+
+
+def read_fvecs(path: Path, limit: int | None = None) -> np.ndarray:
+    """
+    Read a .fvecs file (TEXMEX format): each record is int32 dim d followed by d float32.
+
+    Returns a (num, d) float32 array. ``limit`` caps the number of records read.
+    """
+    raw = np.fromfile(path, dtype=np.int32)
+    if raw.size == 0:
+        raise ValueError(f"Empty or missing .fvecs file: {path}")
+    dim = int(raw[0])
+    record = dim + 1  # 1 int32 header + dim values
+    num = raw.size // record
+    data = raw.reshape(num, record)
+    if not np.all(data[:, 0] == dim):
+        raise ValueError(f"Inconsistent vector dimension in {path}")
+    vecs = data[:, 1:].view(np.float32)
+    if limit is not None:
+        vecs = vecs[:limit]
+    return np.ascontiguousarray(vecs, dtype=np.float32)
+
+
+def read_ivecs(path: Path, limit: int | None = None) -> np.ndarray:
+    """Read an .ivecs file (int32 records); returns (num, d) int64 array."""
+    raw = np.fromfile(path, dtype=np.int32)
+    if raw.size == 0:
+        raise ValueError(f"Empty or missing .ivecs file: {path}")
+    dim = int(raw[0])
+    record = dim + 1
+    num = raw.size // record
+    data = raw.reshape(num, record)[:, 1:]
+    if limit is not None:
+        data = data[:limit]
+    return np.ascontiguousarray(data, dtype=np.int64)
+
+
+def load_sift1m(
+    data_dir: Path | str = SIFT_DIR,
+    num_vectors: int | None = None,
+    num_queries: int | None = None,
+) -> Dataset:
+    """
+    Load the SIFT1M corpus (Euclidean, D=128).
+
+    Expects ``sift_base.fvecs``, ``sift_query.fvecs`` and ``sift_groundtruth.ivecs`` under
+    ``data_dir`` (see research/../fetch_sift.sh). The bundled ground truth is full-corpus,
+    full-query top-100 by L2; it is only attached when the corpus is NOT subsampled, otherwise
+    ground truth is recomputed on demand.
+    """
+    data_dir = Path(data_dir)
+    base_path = data_dir / "sift_base.fvecs"
+    query_path = data_dir / "sift_query.fvecs"
+    gt_path = data_dir / "sift_groundtruth.ivecs"
+    if not base_path.exists():
+        raise FileNotFoundError(
+            f"SIFT base vectors not found at {base_path}. "
+            f"Download with DB_systems/fetch_sift.sh (see README)."
+        )
+
+    vectors = read_fvecs(base_path, limit=num_vectors)
+    queries = read_fvecs(query_path, limit=num_queries)
+    dimension = int(vectors.shape[1])
+
+    # Bundled GT indexes into the full base, so it is only valid when the base is NOT
+    # subsampled. Subsampling queries is fine — GT rows align with query rows, so slice them.
+    ground_truth = None
+    if num_vectors is None and gt_path.exists():
+        ground_truth = read_ivecs(gt_path)
+        if num_queries is not None:
+            ground_truth = ground_truth[:num_queries]
+
+    ids = np.arange(vectors.shape[0], dtype=np.int64)
+    return Dataset(
+        name=f"sift1m_n{vectors.shape[0]}",
+        dimension=dimension,
+        vectors=vectors,
+        queries=queries,
+        ids=ids,
+        distance="Euclid",
+        ground_truth=ground_truth,
+    )
+
+
+def build_dataset(
+    kind: str = "synthetic",
+    dimension: int = 768,
+    *,
+    sift_dir: Path | str = SIFT_DIR,
+    num_vectors: int | None = None,
+    num_queries: int | None = None,
+    seed: int = RANDOM_SEED,
+) -> Dataset:
+    """Factory: 'synthetic' (Dot, chosen D) or 'sift1m' (Euclid, D=128)."""
+    kind = kind.lower()
+    if kind in ("synthetic", "synth", "random"):
+        return generate_dataset(
+            dimension=dimension,
+            num_vectors=num_vectors or NUM_VECTORS,
+            num_queries=num_queries or NUM_QUERIES,
+            seed=seed,
+        )
+    if kind in ("sift", "sift1m"):
+        return load_sift1m(sift_dir, num_vectors=num_vectors, num_queries=num_queries)
+    raise ValueError(f"Unknown dataset kind: {kind!r}. Use 'synthetic' or 'sift1m'.")
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +295,32 @@ def generate_dataset(
 def dot_contributions(query: np.ndarray, vector: np.ndarray) -> np.ndarray:
     """Per-dimension dot-product terms q_i * v_i."""
     return query * vector
+
+
+def score_contributions(
+    query: np.ndarray, vector: np.ndarray, distance: str = "Dot"
+) -> np.ndarray:
+    """
+    Per-dimension score-decomposition terms, matching XQdrant's dims_explained math.
+
+    | Dot       | q_i * v_i        |
+    | Cosine    | q̂_i * v̂_i       (L2-normalized) |
+    | Euclid    | (q_i - v_i)^2    |
+    | Manhattan | |q_i - v_i|      |
+    """
+    d = distance.lower()
+    if d == "dot":
+        return query * vector
+    if d == "cosine":
+        q = query / (np.linalg.norm(query) + 1e-8)
+        v = vector / (np.linalg.norm(vector) + 1e-8)
+        return q * v
+    if d in ("euclid", "euclidean", "l2"):
+        diff = query - vector
+        return diff * diff
+    if d == "manhattan":
+        return np.abs(query - vector)
+    raise ValueError(f"Unknown distance for contributions: {distance!r}")
 
 
 def top_m_dims_full_sort(contributions: np.ndarray, m: int) -> np.ndarray:
@@ -225,25 +367,82 @@ def brute_force_top_k(
     vectors: np.ndarray,
     k: int,
     dim_indices: np.ndarray | None = None,
+    distance: str = "Dot",
+    vectors_norm_sq: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Exact top-k by dot product.
+    Exact top-k under the given distance metric.
 
-    When dim_indices is provided, only those dimensions contribute to the score
-    (matches XQdrant masked / focus subspace semantics).
+    - Dot / Cosine: higher score = better (nearest = largest similarity).
+    - Euclid: smaller squared L2 = better (nearest = smallest distance).
+
+    When ``dim_indices`` is provided, only those dimensions contribute (matches XQdrant
+    masked / focus subspace semantics). For repeated calls over the same subspace at scale,
+    prefer ``SubspaceGT`` which precomputes the projection and norms once.
+
+    ``vectors_norm_sq`` optionally supplies precomputed row norms (for Euclid) matching the
+    dimensions actually used (full or subspace).
     """
-    if dim_indices is None:
-        scores = vectors @ query
-    else:
+    if dim_indices is not None:
         sub_q = query[dim_indices]
         sub_v = vectors[:, dim_indices]
-        scores = sub_v @ sub_q
-    k = min(k, scores.shape[0])
+    else:
+        sub_q = query
+        sub_v = vectors
+
+    n = sub_v.shape[0]
+    k = min(k, n)
     if k == 0:
         return np.array([], dtype=np.int64), np.array([], dtype=np.float32)
-    top_idx = np.argpartition(scores, -k)[-k:]
-    top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
+
+    d = distance.lower()
+    if d in ("dot",):
+        scores = sub_v @ sub_q
+        largest = True
+    elif d == "cosine":
+        vn = sub_v / (np.linalg.norm(sub_v, axis=1, keepdims=True) + 1e-8)
+        qn = sub_q / (np.linalg.norm(sub_q) + 1e-8)
+        scores = vn @ qn
+        largest = True
+    elif d in ("euclid", "euclidean", "l2"):
+        norm_sq = vectors_norm_sq if vectors_norm_sq is not None else np.einsum("ij,ij->i", sub_v, sub_v)
+        # ||v - q||^2 = ||v||^2 - 2 v·q + ||q||^2; the +||q||^2 term is constant per query.
+        scores = norm_sq - 2.0 * (sub_v @ sub_q)
+        largest = False
+    else:
+        raise ValueError(f"Unsupported distance for brute force: {distance!r}")
+
+    if largest:
+        top_idx = np.argpartition(scores, -k)[-k:]
+        top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
+    else:
+        top_idx = np.argpartition(scores, k - 1)[:k]
+        top_idx = top_idx[np.argsort(scores[top_idx])]
     return top_idx.astype(np.int64), scores[top_idx].astype(np.float32)
+
+
+class SubspaceGT:
+    """
+    Precomputed exact-nearest-neighbour helper over a fixed subspace.
+
+    Projecting 1M vectors onto the focus dims once (instead of per query) is the difference
+    between a fast and an unusable ground-truth loop at SIFT1M scale.
+    """
+
+    def __init__(self, vectors: np.ndarray, dim_indices: np.ndarray, distance: str = "Dot"):
+        self.dims = np.asarray(dim_indices)
+        self.distance = distance
+        self.sub_v = np.ascontiguousarray(vectors[:, self.dims])
+        if distance.lower() in ("euclid", "euclidean", "l2"):
+            self.norm_sq = np.einsum("ij,ij->i", self.sub_v, self.sub_v)
+        else:
+            self.norm_sq = None
+
+    def top_k(self, query: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+        sub_q = query[self.dims]
+        return brute_force_top_k(
+            sub_q, self.sub_v, k, distance=self.distance, vectors_norm_sq=self.norm_sq
+        )
 
 
 def recall_at_k(retrieved_ids: Sequence[int], ground_truth_ids: Sequence[int], k: int) -> float:

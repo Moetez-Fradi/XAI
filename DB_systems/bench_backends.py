@@ -29,8 +29,8 @@ import requests
 from bench_common import (
     Dataset,
     LatencyStats,
-    dot_contributions,
     recall_at_k,
+    score_contributions,
     timed_call,
     top_m_dims_bounded_heap,
     top_m_dims_full_sort,
@@ -134,9 +134,19 @@ class SimulatedBackend(SearchBackend):
         if dim_indices is not None:
             sub_q = query[dim_indices]
             sub_v = vectors[:, dim_indices]
-            scores = sub_v @ sub_q
         else:
-            scores = vectors @ query
+            sub_q = query
+            sub_v = vectors
+
+        # "scores" are oriented so that larger = nearer, regardless of metric.
+        d = self.dataset.distance.lower()
+        if d in ("euclid", "euclidean", "l2"):
+            scores = -(np.einsum("ij,ij->i", sub_v, sub_v) - 2.0 * (sub_v @ sub_q))
+        elif d == "cosine":
+            vn = sub_v / (np.linalg.norm(sub_v, axis=1, keepdims=True) + 1e-8)
+            scores = vn @ (sub_q / (np.linalg.norm(sub_q) + 1e-8))
+        else:
+            scores = sub_v @ sub_q
 
         ef = max(k, min(ef_search, scores.shape[0]))
         candidate_idx = np.argpartition(scores, -ef)[-ef:]
@@ -188,7 +198,7 @@ class SimulatedBackend(SearchBackend):
                 row = self._id_to_row[pid]
                 vector = self.dataset.vectors[row]
                 fetched_vectors.append(vector.copy())  # simulate network/disk fetch
-                contribs = dot_contributions(query, vector)
+                contribs = score_contributions(query, vector, self.dataset.distance)
                 top_dims = top_m_dims_full_sort(contribs, m)
                 explained.append({int(d): float(contribs[d]) for d in top_dims})
             base.dims_explained = explained
@@ -211,7 +221,7 @@ class SimulatedBackend(SearchBackend):
             for pid in base.ids:
                 row = self._id_to_row[pid]
                 vector = self.dataset.vectors[row]
-                contribs = dot_contributions(query, vector)
+                contribs = score_contributions(query, vector, self.dataset.distance)
                 if dim_indices is not None:
                     contribs = contribs[dim_indices]
                     dim_map = {int(dim_indices[i]): float(contribs[i]) for i in top_m_dims_bounded_heap(contribs, m)}
@@ -307,7 +317,7 @@ class HttpBackend(SearchBackend):
                 {
                     "vectors": {
                         "size": self.dataset.dimension,
-                        "distance": "Dot",
+                        "distance": self.dataset.distance,
                     },
                     "hnsw_config": {
                         "m": 16,
@@ -466,7 +476,7 @@ class HttpBackend(SearchBackend):
         explained: list[dict[int, float]] = []
         for pid in base.ids:
             vector = id_to_vector[pid]
-            contribs = dot_contributions(query, vector)
+            contribs = score_contributions(query, vector, self.dataset.distance)
             top_dims = top_m_dims_full_sort(contribs, m)
             explained.append({int(d): float(contribs[d]) for d in top_dims})
 

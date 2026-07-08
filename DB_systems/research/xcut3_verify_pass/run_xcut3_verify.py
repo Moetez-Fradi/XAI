@@ -39,15 +39,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ef-search", type=int, default=DEFAULT_EF_SEARCH)
     p.add_argument("--ratios", type=float, nargs="+", default=DEFAULT_RATIOS)
     p.add_argument("--no-provision", action="store_true")
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
-def _run_variant(client, mode, dataset, queries, dims, k, ef, verify):
+def _run_variant(client, mode, dataset, queries, dims, subspace_gt, k, ef, verify):
     lat = LatencyStats()
     recalls: list[float] = []
     unsupported = 0
     for q in queries:
-        gt_ids, _ = cr.brute_force_top_k(q, dataset.vectors, k, dim_indices=dims)
+        gt_ids, _ = subspace_gt.top_k(q, k)
         if mode == "http":
             body = cr.focus_body(q, k, ef, dims, masked=True,
                                  verify=True if verify else None)
@@ -77,11 +78,12 @@ def main() -> int:
         qdrant_url=args.qdrant_url, xqdrant_url=xqdrant_url,
         requires_xqdrant_change="focus.verify (final full-distance rescore of top-k)",
         sweep={"ratios": args.ratios, "ef_search": args.ef_search, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[xcut3] experiment: {run.root}")
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
         client = None
         if args.mode == "http":
@@ -92,10 +94,11 @@ def main() -> int:
         rows: list[dict] = []
         for ratio in args.ratios:
             dims = cr.subspace_indices(dim, ratio)
+            subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
             off_lat, off_rec, off_un = _run_variant(client, args.mode, dataset, queries, dims,
-                                                    args.k, args.ef_search, verify=False)
+                                                    subspace_gt, args.k, args.ef_search, verify=False)
             on_lat, on_rec, on_un = _run_variant(client, args.mode, dataset, queries, dims,
-                                                 args.k, args.ef_search, verify=True)
+                                                 subspace_gt, args.k, args.ef_search, verify=True)
             off_p50 = off_lat.percentiles_ms()["p50"]
             on_p50 = on_lat.percentiles_ms()["p50"]
             rows.append({

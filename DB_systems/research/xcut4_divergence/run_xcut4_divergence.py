@@ -46,6 +46,7 @@ def parse_args() -> argparse.Namespace:
                    help="Optional XQdrant-emitted visited-node divergence CSV "
                         "(schema: subspace_ratio,visited_divergence)")
     p.add_argument("--no-provision", action="store_true")
+    cr.add_dataset_args(p)
     return p.parse_args()
 
 
@@ -58,6 +59,7 @@ def main() -> int:
         qdrant_url=args.qdrant_url, xqdrant_url=xqdrant_url,
         requires_xqdrant_change="visited-node divergence logging (proxy: returned-set divergence needs none)",
         sweep={"ratios": args.ratios, "ef_search": args.ef_search, "k": args.k},
+        extra={"dataset": args.dataset},
     )
     print(f"[xcut4] experiment: {run.root}")
 
@@ -66,9 +68,10 @@ def main() -> int:
         for r in _csv.DictReader(args.divergence_csv.open(encoding="utf-8")):
             instrumentation[float(r["subspace_ratio"])] = float(r["visited_divergence"])
 
-    for dim in args.dimensions:
-        dataset = cr.generate_dataset(dimension=dim)
+    for dataset in cr.iter_datasets(args):
+        dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
+        norms = cr.full_norms_sq(dataset)
         client = None
         if args.mode == "http":
             client = cr.ResearchClient(dataset, args.qdrant_url, xqdrant_url,
@@ -80,7 +83,7 @@ def main() -> int:
             dims = cr.subspace_indices(dim, ratio)
             returned_divs: list[float] = []
             unsupported = 0
-            for q in queries:
+            for i, q in enumerate(queries):
                 if args.mode == "http":
                     full_out = client.query(cr.focus_body(q, args.k, args.ef_search))
                     masked_out = client.query(
@@ -91,9 +94,9 @@ def main() -> int:
                     full_set = set(full_out.result.ids[: args.k])
                     masked_set = set(masked_out.result.ids[: args.k])
                 else:
-                    full_ids, _ = cr.brute_force_top_k(q, dataset.vectors, args.k)
+                    full_ids = cr.full_top_k(dataset, i, q, args.k, norms)
                     res, _, _ = cr.simulated_masked(q, dataset, args.k, dims)
-                    full_set = set(full_ids.tolist())
+                    full_set = set(int(x) for x in full_ids)
                     masked_set = set(res.ids[: args.k])
                 # divergence = fraction of returned top-k NOT shared with full search
                 returned_divs.append(1.0 - len(full_set & masked_set) / max(1, args.k))
