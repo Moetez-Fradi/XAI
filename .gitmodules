@@ -2,3 +2,7 @@
 	path = XQdrant
 	url = https://github.com/Moetez-Fradi/XQdrant.git
 	branch = DB/masked-distance-HNSW
+[submodule "qdrant"]
+	path = qdrant
+	url = https://github.com/qdrant/qdrant.git
+	branch = dev
