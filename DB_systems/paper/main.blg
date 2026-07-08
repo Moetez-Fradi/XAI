@@ -1,0 +1,89 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: ACM-Reference-Format.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Database file #1: references.bib
+I was expecting an "="---line 77 of file references.bib
+ :   title     
+ :             {``Why Should I Trust You?'': Explaining the Predictions of Any Classifier},
+I'm skipping whatever remains of this entry
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 9000 items from 6000.
+Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated global_strs (elt_size=200001) to 20 items from 10.
+Reallocated glb_str_end (elt_size=4) to 20 items from 10.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Warning--empty publisher in andoni2018ann
+Warning--empty address in andoni2018ann
+Warning--empty booktitle in boncz2005monetdb
+Warning--can't use both volume and number fields in jegou2011pq
+Warning--empty publisher in jegou2011pq
+Warning--empty address in jegou2011pq
+Warning--no number and no volume in jegou2011sift
+Warning--page numbers missing in both pages and numpages fields in jegou2011sift
+Warning--empty publisher in johnson2017deep
+Warning--empty address in johnson2017deep
+Warning--page numbers missing in both pages and numpages fields in johnson2017deep
+Warning--empty publisher in lewis2020rag
+Warning--empty address in lewis2020rag
+Warning--page numbers missing in both pages and numpages fields in lewis2020rag
+Warning--empty publisher in lundberg2017shap
+Warning--empty address in lundberg2017shap
+Warning--page numbers missing in both pages and numpages fields in lundberg2017shap
+Warning--empty year in ribeiro2016lime
+Warning--using n.d. in ribeiro2016lime
+Warning--empty title in ribeiro2016lime
+Warning--empty booktitle in ribeiro2016lime
+Warning--empty publisher in ribeiro2016lime
+Warning--empty address in ribeiro2016lime
+Warning--page numbers missing in both pages and numpages fields in ribeiro2016lime
+Warning--empty publisher in guo2020scann
+Warning--empty address in guo2020scann
+Warning--page numbers missing in both pages and numpages fields in guo2020scann
+Warning--empty publisher in wang2021milvus
+Warning--empty address in wang2021milvus
+You've used 15 entries,
+            6273 wiz_defined-function locations,
+            1598 strings with 20646 characters,
+and the built_in function-call counts, 16193 in all, are:
+= -- 1949
+> -- 461
+< -- 0
++ -- 153
+- -- 160
+* -- 1070
+:= -- 1505
+add.period$ -- 72
+call.type$ -- 15
+change.case$ -- 96
+chr.to.int$ -- 15
+cite$ -- 44
+duplicate$ -- 1537
+empty$ -- 1085
+format.name$ -- 208
+if$ -- 3962
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 61
+newline$ -- 159
+num.names$ -- 105
+pop$ -- 684
+preamble$ -- 1
+purify$ -- 211
+quote$ -- 0
+skip$ -- 557
+stack$ -- 0
+substring$ -- 1127
+swap$ -- 123
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 395
+warning$ -- 29
+while$ -- 90
+width$ -- 0
+write$ -- 316
+(There was 1 error message)

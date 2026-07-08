@@ -1,0 +1,4 @@
+[submodule "XQdrant"]
+	path = XQdrant
+	url = https://github.com/Moetez-Fradi/XQdrant.git
+	branch = DB/masked-distance-HNSW

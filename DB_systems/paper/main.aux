@@ -1,0 +1,118 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{lewis2020rag,qdrant2024,wang2021milvus}
+\citation{malkov2018hnsw}
+\citation{boncz2005monetdb}
+\@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Contributions.}{1}{section*.4}\protected@file@percent }
+\citation{malkov2018hnsw}
+\citation{lundberg2017shap}
+\citation{ribeiro2016lime}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Background and Foundations}{2}{section.2}\protected@file@percent }
+\newlabel{sec:background}{{2}{2}{Background and Foundations}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}HNSW Graph Routing}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Per-Dimension Score Decomposition}{2}{subsection.2.2}\protected@file@percent }
+\newlabel{eq:dot-decomp}{{1}{2}{Per-Dimension Score Decomposition}{equation.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Post-Query Extraction Bottleneck}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}XQdrant System Architecture}{2}{section.3}\protected@file@percent }
+\newlabel{sec:architecture}{{3}{2}{XQdrant System Architecture}{section.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Request flow.}{2}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Memory and pipeline safety.}{2}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{API design.}{2}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Algorithmic Implementation and Complexity Analysis}{2}{section.4}\protected@file@percent }
+\newlabel{sec:algorithms}{{4}{2}{Algorithmic Implementation and Complexity Analysis}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Bounded Top-$m$ Attribution}{2}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Time complexity.}{2}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Space complexity.}{2}{section*.9}\protected@file@percent }
+\citation{jegou2011sift}
+\citation{johnson2017deep}
+\citation{wang2021milvus}
+\citation{pinecone2023}
+\citation{qdrant2024}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces In-Database Top-$m$ Feature Attribution}}{3}{algorithm.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{alg:attribution}{{1}{3}{In-Database Top-$m$ Feature Attribution}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Dynamic Subspace Search via Focus Rescoring}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitation.}{3}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Evaluation}{3}{section.5}\protected@file@percent }
+\newlabel{sec:eval}{{5}{3}{Experimental Evaluation}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Experimental Methodology}{3}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hardware and isolation.}{3}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Baselines.}{3}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Datasets.}{3}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Metrics.}{3}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Latency versus Recall}{3}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Throughput Scalability}{3}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Attribution Depth Scaling}{3}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Subspace Focus Latency Profile}{3}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Comparative Summary}{3}{subsection.5.6}\protected@file@percent }
+\citation{johnson2019faiss}
+\citation{guo2020scann}
+\citation{andoni2018ann}
+\citation{lundberg2017shap,ribeiro2016lime}
+\citation{gray1998data}
+\citation{jegou2011pq}
+\newlabel{fig:latency-recall-768}{{1a}{4}{$D=768$}{figure.caption.15}{}}
+\newlabel{sub@fig:latency-recall-768}{{a}{4}{$D=768$}{figure.caption.15}{}}
+\newlabel{fig:latency-recall-1536}{{1b}{4}{$D=1536$}{figure.caption.15}{}}
+\newlabel{sub@fig:latency-recall-1536}{{b}{4}{$D=1536$}{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Latency--recall trade-off (p50 latency vs.\ $1-\mathrm  {Recall@10}$) for vanilla Qdrant and XQdrant with \texttt  {with\_dims\_explained} enabled ($m{=}10$). XQdrant preserves ANN quality while exposing per-coordinate accountability.}}{4}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:latency-recall}{{1}{4}{Latency--recall trade-off (p50 latency vs.\ $1-\mathrm {Recall@10}$) for vanilla Qdrant and XQdrant with \texttt {with\_dims\_explained} enabled ($m{=}10$). XQdrant preserves ANN quality while exposing per-coordinate accountability}{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Multi-threaded query throughput (QPS) vs.\ client thread count ($D{=}768$, $k{=}10$, \texttt  {ef\_search}${=}128$, vanilla Qdrant). Peak throughput of 554\,QPS is reached at 4 threads.}}{4}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:throughput}{{2}{4}{Multi-threaded query throughput (QPS) vs.\ client thread count ($D{=}768$, $k{=}10$, \texttt {ef\_search}${=}128$, vanilla Qdrant). Peak throughput of 554\,QPS is reached at 4 threads}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Related Work}{4}{section.6}\protected@file@percent }
+\newlabel{sec:related}{{6}{4}{Related Work}{section.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Vector database systems.}{4}{section*.20}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparative summary at $D{=}768$, $k{=}10$, \texttt  {ef\_search}${=}128$, $m{=}10$. Throughput is measured for vanilla Qdrant; attribution accuracy is exact for the Dot/Cosine decompositions.}}{4}{table.caption.19}\protected@file@percent }
+\newlabel{tab:summary}{{1}{4}{Comparative summary at $D{=}768$, $k{=}10$, \texttt {ef\_search}${=}128$, $m{=}10$. Throughput is measured for vanilla Qdrant; attribution accuracy is exact for the Dot/Cosine decompositions}{table.caption.19}{}}
+\@writefile{toc}{\contentsline {paragraph}{ANN algorithms and libraries.}{4}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Explainable AI.}{4}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion and Future Work}{4}{section.7}\protected@file@percent }
+\newlabel{sec:future}{{7}{4}{Discussion and Future Work}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Quantization.}{4}{section*.23}\protected@file@percent }
+\bibstyle{ACM-Reference-Format}
+\bibdata{references}
+\bibcite{andoni2018ann}{{1}{2014}{{Andoni et~al\mbox  {.}}}{{}}}
+\bibcite{boncz2005monetdb}{{2}{2008}{{Boncz et~al\mbox  {.}}}{{}}}
+\bibcite{gray1998data}{{3}{1997}{{Gray et~al\mbox  {.}}}{{}}}
+\bibcite{jegou2011pq}{{4}{2011}{{J{\'e}gou et~al\mbox  {.}}}{{}}}
+\bibcite{jegou2011sift}{{5}{2010}{{J{\'e}gou and Perronnin}}{{}}}
+\bibcite{johnson2017deep}{{6}{2017}{{Johnson et~al\mbox  {.}}}{{}}}
+\bibcite{johnson2019faiss}{{7}{2021}{{Johnson et~al\mbox  {.}}}{{}}}
+\bibcite{lewis2020rag}{{8}{2020}{{Lewis et~al\mbox  {.}}}{{}}}
+\bibcite{lundberg2017shap}{{9}{2017}{{Lundberg and Lee}}{{}}}
+\newlabel{fig:attribution-768}{{3a}{5}{$D=768$}{figure.caption.17}{}}
+\newlabel{sub@fig:attribution-768}{{a}{5}{$D=768$}{figure.caption.17}{}}
+\newlabel{fig:attribution-1536}{{3b}{5}{$D=1536$}{figure.caption.17}{}}
+\newlabel{sub@fig:attribution-1536}{{b}{5}{$D=1536$}{figure.caption.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Attribution depth scaling: p50 latency vs.\ top-$m$ coordinate count ($k{=}10$, \texttt  {ef\_search}${=}128$). Shaded region indicates latency saved by in-database execution.}}{5}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:attribution-depth}{{3}{5}{Attribution depth scaling: p50 latency vs.\ top-$m$ coordinate count ($k{=}10$, \texttt {ef\_search}${=}128$). Shaded region indicates latency saved by in-database execution}{figure.caption.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Subspace focus latency ratio $T_{\mathrm  {full}}/T_{\mathrm  {sub}}$ vs.\ coordinate subset fraction ($D{=}768$). Values below 1 indicate that rescoring overhead dominates subspace arithmetic savings.}}{5}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:subspace}{{4}{5}{Subspace focus latency ratio $T_{\mathrm {full}}/T_{\mathrm {sub}}$ vs.\ coordinate subset fraction ($D{=}768$). Values below 1 indicate that rescoring overhead dominates subspace arithmetic savings}{figure.caption.18}{}}
+\@writefile{toc}{\contentsline {paragraph}{True subspace acceleration.}{5}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{GPU offload.}{5}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Security and privacy.}{5}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusion}{5}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{8}{5}{Conclusion}{section.8}{}}
+\@writefile{toc}{\contentsline {section}{Acknowledgments}{5}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{5}{section*.30}\protected@file@percent }
+\bibcite{malkov2018hnsw}{{10}{2020}{{Malkov and Yashunin}}{{}}}
+\bibcite{pinecone2023}{{11}{2023}{{Pinecone Systems}}{{}}}
+\bibcite{qdrant2024}{{12}{2024}{{Qdrant Team}}{{}}}
+\bibcite{ribeiro2016lime}{{13}{[n.\,d.]}{{Ribeiro et~al\mbox  {.}}}{{}}}
+\bibcite{guo2020scann}{{14}{2020}{{Shrivastava et~al\mbox  {.}}}{{}}}
+\bibcite{wang2021milvus}{{15}{2021}{{Wang et~al\mbox  {.}}}{{}}}
+\bibcite{xqdrant2026}{{16}{2026}{{XQdrant Contributors}}{{}}}
+\newlabel{tocindent-1}{0pt}
+\newlabel{tocindent0}{0pt}
+\newlabel{tocindent1}{4.185pt}
+\newlabel{tocindent2}{10.34999pt}
+\newlabel{tocindent3}{0pt}
+\newlabel{tocindent4}{0pt}
+\newlabel{tocindent5}{0pt}
+\newlabel{TotPages}{{6}{6}{}{page.6}{}}
+\gdef \@abspage@last{6}

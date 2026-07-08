@@ -1,0 +1,208 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{15}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[Andoni et~al\mbox{.}(2014)]%
+        {andoni2018ann}
+\bibfield{author}{\bibinfo{person}{Alexandr Andoni}, \bibinfo{person}{Piotr
+  Indyk}, \bibinfo{person}{Huy~L. Nguyen}, {and} \bibinfo{person}{Ilya
+  Razenshteyn}.} \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Beyond Locality-Sensitive Hashing}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the ACM-SIAM Symposium on Discrete
+  Algorithms (SODA)}}. \bibinfo{pages}{1018--1038}.
+\newblock
+
+
+\bibitem[Boncz et~al\mbox{.}(2008)]%
+        {boncz2005monetdb}
+\bibfield{author}{\bibinfo{person}{Peter~A. Boncz}, \bibinfo{person}{Martin~L.
+  Kersten}, {and} \bibinfo{person}{Stefan Manegold}.}
+  \bibinfo{year}{2008}\natexlab{}.
+\newblock \showarticletitle{Breaking the Memory Wall in MonetDB}.
+\newblock \bibinfo{journal}{\emph{Commun. ACM}} \bibinfo{volume}{51},
+  \bibinfo{number}{12}, \bibinfo{pages}{77--85}.
+\newblock
+
+
+\bibitem[Gray et~al\mbox{.}(1997)]%
+        {gray1998data}
+\bibfield{author}{\bibinfo{person}{Jim Gray}, \bibinfo{person}{Surajit
+  Chaudhuri}, {et~al\mbox{.}}} \bibinfo{year}{1997}\natexlab{}.
+\newblock \showarticletitle{Data Cube: A Relational Aggregation Operator
+  Generalizing Group-By, Cross-Tab, and Sub-Totals}.
+\newblock \bibinfo{journal}{\emph{Data Mining and Knowledge Discovery}}
+  \bibinfo{volume}{1}, \bibinfo{number}{1} (\bibinfo{year}{1997}),
+  \bibinfo{pages}{29--53}.
+\newblock
+\shownote{Classic in-database analytics paradigm}.
+\newblock
+
+
+\bibitem[J{\'e}gou et~al\mbox{.}(2011)]%
+        {jegou2011pq}
+\bibfield{author}{\bibinfo{person}{Herv{\'e} J{\'e}gou},
+  \bibinfo{person}{Matthijs Douze}, {and} \bibinfo{person}{Cordelia Schmid}.}
+  \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{Product Quantization for Nearest Neighbor Search}.
+  In \bibinfo{booktitle}{\emph{IEEE Transactions on Pattern Analysis and
+  Machine Intelligence}}, Vol.~\bibinfo{volume}{33}. \bibinfo{pages}{117--128}.
+\newblock
+
+
+\bibitem[J{\'e}gou and Perronnin(2010)]%
+        {jegou2011sift}
+\bibfield{author}{\bibinfo{person}{Herv{\'e} J{\'e}gou} {and}
+  \bibinfo{person}{Florent Perronnin}.} \bibinfo{year}{2010}\natexlab{}.
+\newblock \showarticletitle{Aggregating Local Descriptors into a Compact Image
+  Representation}.
+\newblock \bibinfo{journal}{\emph{IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR)}} (\bibinfo{year}{2010}).
+\newblock
+\shownote{SIFT descriptor lineage; SIFT1M benchmark widely used in ANN
+  literature}.
+\newblock
+
+
+\bibitem[Johnson et~al\mbox{.}(2017)]%
+        {johnson2017deep}
+\bibfield{author}{\bibinfo{person}{Jeff Johnson}, \bibinfo{person}{Matthijs
+  Douze}, {and} \bibinfo{person}{Herv{\'e} J{\'e}gou}.}
+  \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Billion-Scale Similarity Search with {GPUs}
+  (Deep1B)}. In \bibinfo{booktitle}{\emph{arXiv preprint arXiv:1702.08734}}.
+\newblock
+
+
+\bibitem[Johnson et~al\mbox{.}(2021)]%
+        {johnson2019faiss}
+\bibfield{author}{\bibinfo{person}{Jeff Johnson}, \bibinfo{person}{Matthijs
+  Douze}, {and} \bibinfo{person}{Herv{\'e} J{\'e}gou}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{Billion-Scale Similarity Search with {GPUs}}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Big Data}}
+  \bibinfo{volume}{7}, \bibinfo{number}{3} (\bibinfo{year}{2021}),
+  \bibinfo{pages}{535--547}.
+\newblock
+\href{https://doi.org/10.1109/TBDATA.2019.2921572}{doi:\nolinkurl{10.1109/TBDATA.2019.2921572}}
+
+
+\bibitem[Lewis et~al\mbox{.}(2020)]%
+        {lewis2020rag}
+\bibfield{author}{\bibinfo{person}{Patrick Lewis}, \bibinfo{person}{Ethan
+  Perez}, \bibinfo{person}{Aleksandra Piktus}, {et~al\mbox{.}}}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Retrieval-Augmented Generation for
+  Knowledge-Intensive {NLP} Tasks}. In \bibinfo{booktitle}{\emph{Advances in
+  Neural Information Processing Systems (NeurIPS)}}, Vol.~\bibinfo{volume}{33}.
+\newblock
+
+
+\bibitem[Lundberg and Lee(2017)]%
+        {lundberg2017shap}
+\bibfield{author}{\bibinfo{person}{Scott~M. Lundberg} {and}
+  \bibinfo{person}{Su-In Lee}.} \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{A Unified Approach to Interpreting Model
+  Predictions}. In \bibinfo{booktitle}{\emph{Advances in Neural Information
+  Processing Systems (NeurIPS)}}, Vol.~\bibinfo{volume}{30}.
+\newblock
+
+
+\bibitem[Malkov and Yashunin(2020)]%
+        {malkov2018hnsw}
+\bibfield{author}{\bibinfo{person}{Yu.~A. Malkov} {and} \bibinfo{person}{D.~A.
+  Yashunin}.} \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Efficient and Robust Approximate Nearest Neighbor
+  Search Using Hierarchical Navigable Small World Graphs}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Pattern Analysis and
+  Machine Intelligence}} \bibinfo{volume}{42}, \bibinfo{number}{4}
+  (\bibinfo{year}{2020}), \bibinfo{pages}{824--836}.
+\newblock
+\href{https://doi.org/10.1109/TPAMI.2018.2884673}{doi:\nolinkurl{10.1109/TPAMI.2018.2884673}}
+
+
+\bibitem[{Pinecone Systems}(2023)]%
+        {pinecone2023}
+\bibfield{author}{\bibinfo{person}{{Pinecone Systems}}.}
+  \bibinfo{year}{2023}\natexlab{}.
+\newblock \bibinfo{title}{Pinecone: Managed Vector Database for Production
+  {AI}}.
+\newblock \bibinfo{howpublished}{\url{https://www.pinecone.io/}}.
+\newblock
+
+
+\bibitem[{Qdrant Team}(2024)]%
+        {qdrant2024}
+\bibfield{author}{\bibinfo{person}{{Qdrant Team}}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \bibinfo{title}{Qdrant: Vector Search Engine Documentation}.
+\newblock \bibinfo{howpublished}{\url{https://qdrant.tech/documentation/}}.
+\newblock
+
+
+\bibitem[Ribeiro et~al\mbox{.}({[n.\,d.]})]%
+        {ribeiro2016lime}
+\bibfield{author}{\bibinfo{person}{Marco~Tulio Ribeiro},
+  \bibinfo{person}{Sameer Singh}, {and} \bibinfo{person}{Carlos Guestrin}.}
+  \bibinfo{year}{[n.\,d.]}\natexlab{}.
+\newblock
+
+
+\bibitem[Shrivastava et~al\mbox{.}(2020)]%
+        {guo2020scann}
+\bibfield{author}{\bibinfo{person}{Anshumali Shrivastava} {et~al\mbox{.}}}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Accelerating Large-Scale Inference with Anisotropic
+  Vector Quantization}. In \bibinfo{booktitle}{\emph{Proceedings of the
+  International Conference on Machine Learning (ICML)}}.
+\newblock
+\shownote{ScaNN / quantization-aware ANN}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2021)]%
+        {wang2021milvus}
+\bibfield{author}{\bibinfo{person}{Jianguo Wang}, \bibinfo{person}{Xiaomeng
+  Yi}, \bibinfo{person}{Rentong Guo}, {et~al\mbox{.}}}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{Milvus: A Purpose-Built Vector Data Management
+  System}. In \bibinfo{booktitle}{\emph{Proceedings of the ACM International
+  Conference on Management of Data (SIGMOD)}}. \bibinfo{pages}{2614--2627}.
+\newblock
+\href{https://doi.org/10.1145/3448016.3457550}{doi:\nolinkurl{10.1145/3448016.3457550}}
+
+
+\end{thebibliography}
