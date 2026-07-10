@@ -361,6 +361,55 @@ def plot_masked_subspace(dimension: int, output_stem: str = "plot5_masked_subspa
     return png_path
 
 
+def plot_subspace_coherence(dimension: int, output_stem: str = "plot6_subspace_coherence") -> Path | None:
+    """
+    Plot 6: Subspace coherence — mean overlap between full-space and subspace
+    exact top-k neighbour sets vs subspace ratio. Explains the Test E recall
+    curves (a coherent subspace preserves neighbourhoods; an incoherent one
+    cannot be searched accurately regardless of traversal).
+    """
+    rows = _read_csv(bench_common.RESULTS_DIR / f"subspace_coherence_d{dimension}.csv")
+    if not rows:
+        return None
+
+    _apply_pub_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    ratios = [float(r["subspace_ratio"]) for r in rows]
+    overlap_cols = sorted(
+        (c for c in rows[0] if c.startswith("overlap_at_")),
+        key=lambda c: int(c.rsplit("_", 1)[1]),
+    )
+    palette = [COLORS["masked"], COLORS["rescore"], COLORS["speedup"], COLORS["vanilla"]]
+    for i, col in enumerate(overlap_cols):
+        k = col.rsplit("_", 1)[1]
+        ax.plot(
+            ratios,
+            [float(r[col]) for r in rows],
+            marker="o",
+            color=palette[i % len(palette)],
+            linewidth=2.2,
+            markersize=7,
+            label=f"Overlap@{k}",
+        )
+
+    ax.set_xlabel("Subspace Ratio (D_sub / D)")
+    ax.set_ylabel("Full-space ∩ subspace top-k / k")
+    ax.set_title(f"Subspace Neighbourhood Coherence (D={dimension})")
+    ax.set_ylim(0.0, 1.05)
+    ax.set_xticks(ratios)
+    ax.legend(loc="lower right")
+    ax.grid(True, alpha=0.3)
+
+    ensure_output_dirs()
+    png_path = bench_common.PLOTS_DIR / f"{output_stem}_d{dimension}.png"
+    pdf_path = bench_common.PLOTS_DIR / f"{output_stem}_d{dimension}.pdf"
+    fig.savefig(png_path)
+    fig.savefig(pdf_path)
+    plt.close(fig)
+    return png_path
+
+
 def generate_all_plots(dimensions: list[int]) -> list[Path]:
     """Render all publication charts for each evaluated dimension."""
     created: list[Path] = []
@@ -371,6 +420,7 @@ def generate_all_plots(dimensions: list[int]) -> list[Path]:
             plot_attribution_depth,
             plot_subspace_speedup,
             plot_masked_subspace,
+            plot_subspace_coherence,
         ):
             path = plotter(dim)
             if path is not None:

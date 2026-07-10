@@ -446,3 +446,86 @@ def run_test_masked_subspace(
         rows=rows,
     )
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Test F — Subspace coherence diagnostic (offline, no server)
+# ---------------------------------------------------------------------------
+
+
+def run_test_subspace_coherence(
+    dataset: Dataset,
+    num_queries: int = NUM_QUERIES,
+    ks: tuple[int, ...] = (10, 100),
+    ratios: list[float] | None = None,
+) -> list[dict]:
+    """
+    Test F — Offline diagnostic: how well does each subspace preserve the
+    full-space neighbourhood?
+
+    For every subspace ratio we measure the mean overlap between the exact
+    full-space top-k neighbours and the exact subspace top-k neighbours. This is
+    independent of any traversal change and gives a principled *why* for the
+    recall curves in Test E (a subspace that scrambles neighbourhoods cannot be
+    searched accurately, no matter how the index is traversed).
+    """
+    queries = _select_queries(dataset, num_queries)
+    ratio_values = ratios or SUBSPACE_RATIOS
+    max_k = max(ks)
+
+    # Full-space exact top-max_k ground truth (reuse bundled GT when available).
+    full_norms_sq = None
+    if dataset.distance.lower() in ("euclid", "euclidean", "l2") and dataset.ground_truth is None:
+        full_norms_sq = np.einsum("ij,ij->i", dataset.vectors, dataset.vectors)
+
+    def _full_gt(idx: int, query: np.ndarray) -> np.ndarray:
+        if dataset.ground_truth is not None:
+            return dataset.ground_truth[idx][:max_k]
+        gt_ids, _ = brute_force_top_k(
+            query, dataset.vectors, max_k,
+            distance=dataset.distance, vectors_norm_sq=full_norms_sq,
+        )
+        return gt_ids
+
+    full_gt = [_full_gt(i, q) for i, q in enumerate(queries)]
+
+    rows: list[dict] = []
+    for ratio in ratio_values:
+        dim_indices = _subspace_indices(dataset.dimension, ratio)
+        subspace_gt = SubspaceGT(dataset.vectors, dim_indices, distance=dataset.distance)
+
+        # overlap[k] accumulates mean |full_topk ∩ sub_topk| / k across queries.
+        overlaps: dict[int, list[float]] = {k: [] for k in ks}
+        for q_idx, query in enumerate(queries):
+            sub_ids, _ = subspace_gt.top_k(query, max_k)
+            for k in ks:
+                full_set = set(int(x) for x in full_gt[q_idx][:k])
+                sub_set = set(int(x) for x in sub_ids[:k])
+                denom = float(min(k, len(full_set))) or 1.0
+                overlaps[k].append(len(full_set & sub_set) / denom)
+
+        row = {
+            "dimension": dataset.dimension,
+            "subspace_ratio": ratio,
+            "subspace_dims": len(dim_indices),
+        }
+        for k in ks:
+            row[f"overlap_at_{k}"] = float(np.mean(overlaps[k]))
+        rows.append(row)
+
+    # Anchor at ratio 1.0 (subspace == full space → perfect overlap).
+    anchor = {
+        "dimension": dataset.dimension,
+        "subspace_ratio": 1.0,
+        "subspace_dims": dataset.dimension,
+    }
+    for k in ks:
+        anchor[f"overlap_at_{k}"] = 1.0
+    rows.insert(0, anchor)
+
+    write_csv(
+        bench_common.RESULTS_DIR / f"subspace_coherence_d{dataset.dimension}.csv",
+        fieldnames=list(rows[0].keys()),
+        rows=rows,
+    )
+    return rows

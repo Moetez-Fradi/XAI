@@ -310,12 +310,13 @@ def simulated_masked(
     gt_ids, _ = brute_force_top_k(query, dataset.vectors, k, dim_indices=dims,
                                   distance=dataset.distance)
 
-    # Fraction of layers actually masked. Option 2 semantics: mask_from_layer=0 masks every
-    # layer (current Option 1, worst recall); mask_from_layer=max_layer masks none (best recall).
+    # Fraction of layers actually masked. Option 2 semantics: layer L is masked iff
+    # L < mask_from_layer. So mask_from_layer=0 masks none (best recall); a large
+    # cutoff masks every layer (Option 1 / worst recall). None → fully masked.
     if mask_from_layer is None:
         masked_frac = 1.0
     else:
-        masked_frac = 1.0 - max(0.0, min(1.0, mask_from_layer / max(1, max_layer)))
+        masked_frac = max(0.0, min(1.0, mask_from_layer / max(1, max_layer)))
 
     # Navigability penalty grows as we mask more layers and shrink the subspace.
     penalty = masked_frac * (1.0 - ratio)

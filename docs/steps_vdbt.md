@@ -47,8 +47,12 @@ switch to masked distance only for the bottom `N` layers (local refinement).
 candidate list is largest. Best risk/reward of the four.
 
 **Code changes:**
-- Add a `mask_from_layer: usize` config parameter (0 = fully masked, `max_layer` = fully
-  unmasked / current behavior).
+- Add a `mask_from_layer: usize` config parameter. Layer `L` uses **masked** distance when
+  `L < mask_from_layer`, otherwise **full** distance (layer 0 = bottom/base).
+  - `mask_from_layer = 0` → no masking (identical to plain nearest)
+  - `mask_from_layer >= top_layer + 1` → all layers masked (identical to Option 1 /
+    today's `focus.masked=true`)
+  - Omitting `mask_from_layer` with `masked=true` keeps legacy full-mask behaviour.
 - In the layer-traversal loop, branch distance-function selection on `current_layer <
   mask_from_layer`.
 - Expose this as a sweep-able parameter in the benchmarking harness (not just a fixed

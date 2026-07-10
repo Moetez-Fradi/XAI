@@ -27,6 +27,9 @@ import numpy as np
 import requests
 
 from bench_common import (
+    HNSW_EF_CONSTRUCT,
+    HNSW_M,
+    WARMUP_EXTRA,
     Dataset,
     LatencyStats,
     recall_at_k,
@@ -268,6 +271,9 @@ class HttpBackend(SearchBackend):
         self.collection_name = collection_name or f"bench_{dataset.name}"
         self.timeout_s = timeout_s
         self._session = requests.Session()
+        # Lazily-probed feature support per query path (attribution / focus /
+        # masked). None until _probe_capabilities runs on first warmup.
+        self._caps: dict[str, bool] | None = None
 
         if setup_collection:
             self._provision_collection()
@@ -280,13 +286,21 @@ class HttpBackend(SearchBackend):
         method: str,
         path: str,
         json_body: dict | None = None,
+        close: bool = False,
     ) -> dict[str, Any]:
         url = f"{base_url}{path}"
+        # ``close=True`` forces a fresh connection (Connection: close) for this
+        # request. Large responses (with_dims_explained maps, with_vector=True
+        # retrieves) otherwise hit a TCP delayed-ACK/Nagle stall on the reused
+        # keep-alive socket, adding a spurious ~40 ms that dwarfs real server
+        # compute. Plain search responses are single-packet and stay keep-alive.
+        headers = {"Connection": "close"} if close else None
         response = self._session.request(
             method,
             url,
             json=json_body,
             timeout=self.timeout_s,
+            headers=headers,
         )
         if not response.ok:
             detail = response.text.strip()
@@ -320,8 +334,8 @@ class HttpBackend(SearchBackend):
                         "distance": self.dataset.distance,
                     },
                     "hnsw_config": {
-                        "m": 16,
-                        "ef_construct": 200,
+                        "m": HNSW_M,
+                        "ef_construct": HNSW_EF_CONSTRUCT,
                     },
                 },
             )
@@ -344,12 +358,122 @@ class HttpBackend(SearchBackend):
                     {"points": points},
                 )
 
+    def wait_for_indexing(
+        self,
+        expected_points: int | None = None,
+        timeout_s: float = 900.0,
+        poll_s: float = 2.0,
+    ) -> None:
+        """
+        Block until every target server reports the collection as fully optimized.
+
+        HNSW is built asynchronously after upsert, so timing before the optimizer
+        settles conflates search latency with index-build work. We wait for
+        ``status == "green"`` (optimizers idle) and, when known, the expected
+        point count. Logs a warning (rather than failing) if the timeout hits.
+        """
+        for base in {self.qdrant_url, self.xqdrant_url}:
+            deadline = time.time() + timeout_s
+            last_status = "unknown"
+            last_indexed = 0
+            last_points = 0
+            while time.time() < deadline:
+                try:
+                    info = self._request(
+                        base, "GET", f"/collections/{self.collection_name}"
+                    )
+                except requests.HTTPError:
+                    time.sleep(poll_s)
+                    continue
+                result = info.get("result", {})
+                last_status = result.get("status", "unknown")
+                last_indexed = int(result.get("indexed_vectors_count") or 0)
+                last_points = int(result.get("points_count") or 0)
+                points_ok = expected_points is None or last_points >= expected_points
+                if last_status == "green" and last_points > 0 and points_ok:
+                    print(
+                        f"  [{base}] indexed: status={last_status}, "
+                        f"points={last_points}, indexed_vectors={last_indexed}"
+                    )
+                    break
+                time.sleep(poll_s)
+            else:
+                print(
+                    f"  WARNING [{base}] indexing not confirmed within {timeout_s:.0f}s "
+                    f"(status={last_status}, points={last_points}, "
+                    f"indexed_vectors={last_indexed}); proceeding anyway.",
+                    file=__import__("sys").stderr,
+                )
+
     # -- search operations --------------------------------------------------
 
+    def _probe_capabilities(self, sample_query: np.ndarray) -> None:
+        """
+        Detect once whether the XQdrant endpoint supports the attribution /
+        focus / masked query extensions. Stock Qdrant rejects them (400), so we
+        only warm the paths that actually exist for this backend.
+        """
+        if self._caps is not None:
+            return
+        caps = {"attribution": False, "focus": False, "masked": False}
+        half = np.arange(0, max(1, self.dataset.dimension // 2), dtype=np.int64)
+
+        probes = {
+            "attribution": self._build_query_body(
+                sample_query, 10, 64, with_dims_explained={"top": 10}
+            ),
+            "focus": self._build_query_body(
+                sample_query, 10, 64, dim_indices=half, focus_masked=False
+            ),
+            "masked": self._build_query_body(
+                sample_query, 10, 64, dim_indices=half, focus_masked=True
+            ),
+        }
+        for name, body in probes.items():
+            try:
+                self._request(
+                    self.xqdrant_url,
+                    "POST",
+                    f"/collections/{self.collection_name}/points/query",
+                    body,
+                )
+                caps[name] = True
+            except requests.HTTPError:
+                caps[name] = False
+        self._caps = caps
+
     def warmup(self, queries: np.ndarray, count: int) -> None:
+        """
+        Warm every hot path this backend will actually time, not just plain
+        search. This defeats first-touch page-cache / scratch-buffer artifacts
+        (e.g. the ``with_dims_explained`` internal vector retrieve) that
+        otherwise inflate the first test that exercises a path.
+        """
+        n = queries.shape[0]
+        self._probe_capabilities(queries[0])
+        caps = self._caps or {}
+
         for i in range(count):
-            q = queries[i % queries.shape[0]]
-            self.vanilla_search(q, k=10, ef_search=64)
+            self.vanilla_search(queries[i % n], k=10, ef_search=64)
+
+        extra = min(count, WARMUP_EXTRA)
+        half = np.arange(0, max(1, self.dataset.dimension // 2), dtype=np.int64)
+
+        if caps.get("attribution"):
+            for i in range(extra):
+                self.xqdrant_attribution(queries[i % n], k=10, m=10, ef_search=64)
+        if caps.get("focus"):
+            for i in range(extra):
+                self.vanilla_search(
+                    queries[i % n], k=10, ef_search=64,
+                    dim_indices=half, focus_masked=False,
+                )
+        if caps.get("masked"):
+            for i in range(extra):
+                self.vanilla_search(
+                    queries[i % n], k=10, ef_search=64,
+                    dim_indices=half, focus_masked=True,
+                )
 
     def _build_query_body(
         self,
@@ -358,11 +482,13 @@ class HttpBackend(SearchBackend):
         ef_search: int,
         dim_indices: np.ndarray | None = None,
         focus_masked: bool = False,
+        mask_from_layer: int | None = None,
         with_dims_explained: int | dict | None = None,
         with_vector: bool = False,
     ) -> dict[str, Any]:
         # REST shape for NearestQuery (see XQdrant openapi NearestQuery):
-        #   { "nearest": <vector>, "focus": { "dims": [...], "masked": true } }
+        #   { "nearest": <vector>, "focus": { "dims": [...], "masked": true,
+        #                                     "mask_from_layer": N } }
         query_obj: dict[str, Any] = {"nearest": query.tolist()}
         if dim_indices is not None:
             focus: dict[str, Any] = {
@@ -370,6 +496,8 @@ class HttpBackend(SearchBackend):
             }
             if focus_masked:
                 focus["masked"] = True
+                if mask_from_layer is not None:
+                    focus["mask_from_layer"] = int(mask_from_layer)
             else:
                 focus["candidates_limit"] = max(k * 10, ef_search)
             query_obj["focus"] = focus
@@ -463,6 +591,7 @@ class HttpBackend(SearchBackend):
                 "ids": base.ids,
                 "with_vector": True,
             },
+            close=True,  # large with_vector response — avoid delayed-ACK stall
         )
         retrieved = retrieve_payload.get("result", [])
         id_to_vector = {}
@@ -507,9 +636,25 @@ class HttpBackend(SearchBackend):
             "POST",
             f"/collections/{self.collection_name}/points/query",
             body,
+            close=True,  # large dims_explained response — avoid delayed-ACK stall
         )
         elapsed = time.perf_counter_ns() - start
         return self._parse_points(payload), elapsed
+
+
+def fetch_server_info(url: str, timeout_s: float = 5.0) -> dict[str, Any]:
+    """Fetch the Qdrant/XQdrant root banner (version + commit) for the manifest."""
+    try:
+        response = requests.get(url.rstrip("/") + "/", timeout=timeout_s)
+        response.raise_for_status()
+        data = response.json()
+        return {
+            "url": url,
+            "version": data.get("version"),
+            "commit": data.get("commit"),
+        }
+    except (requests.RequestException, ValueError) as exc:
+        return {"url": url, "error": str(exc)}
 
 
 def make_backend(

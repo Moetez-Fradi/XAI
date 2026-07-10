@@ -27,16 +27,26 @@ NUM_VECTORS = 10_000
 NUM_QUERIES = 500
 TOP_K = 10
 WARMUP_QUERIES = 1_000
+# Extra (non-plain) hot paths — attribution, focus rescore, focus masked — are
+# warmed for this many queries so their page cache / scratch buffers are hot
+# before timing. Kept smaller than WARMUP_QUERIES since these are only needed to
+# defeat first-touch artifacts, not to converge latency.
+WARMUP_EXTRA = 200
 
 DIMENSIONS = (768, 1536)
 EF_SEARCH_VALUES = [16, 22, 32, 45, 64, 90, 128, 181, 256, 362, 512]
 THREAD_COUNTS = [1, 2, 4, 8, 16]
 ATTRIBUTION_DEPTHS = [1, 5, 10, 20, 50]
-SUBSPACE_RATIOS = [0.25, 0.5, 0.75]
+SUBSPACE_RATIOS = [0.1, 0.25, 0.5, 0.75]
 
 DEFAULT_DISTANCE = "Dot"
 DEFAULT_EF_SEARCH = 128
 DEFAULT_ATTRIBUTION_M = 10
+
+# HNSW index parameters used when provisioning collections (recorded in the run
+# manifest for reproducibility).
+HNSW_M = 16
+HNSW_EF_CONSTRUCT = 200
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 EXPERIMENTS_ROOT = PACKAGE_DIR / "experiments"
@@ -508,6 +518,22 @@ def write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[dict]) -> No
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
+
+
+def git_commit() -> str | None:
+    """Best-effort short+long git SHA of the working tree (for the manifest)."""
+    try:
+        import subprocess
+
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(PACKAGE_DIR),
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        return out.strip()
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
 
 
 def detect_physical_cores() -> int:

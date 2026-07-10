@@ -73,9 +73,11 @@ post-processed identically to `Nearest`.
   remote shards (`unimplemented!()` on that gRPC edge, mirroring the `FeedbackNaive` precedent).
 
 Carried end-to-end as a new query variant rather than a `SearchParams`/`CoreSearchRequest` field:
-`QueryEnum::NearestMasked(NamedQuery<VectorInternal>, Vec<u32>)` at the shard layer and
-`QueryVector::NearestMasked(VectorInternal, Vec<u32>)` at the segment layer. The `raw_scorer`
+`QueryEnum::NearestMasked(NamedQuery<VectorInternal>, Vec<u32>, Option<usize>)` at the shard layer and
+`QueryVector::NearestMasked(VectorInternal, Vec<u32>, Option<usize>)` at the segment layer. The optional
+third field is `mask_from_layer` (hybrid Option 2); `None` means mask every layer. The `raw_scorer`
 dispatch builds the `MaskedMetricQueryScorer` for dense storage and rejects every other storage kind.
+Hybrid queries build both full and masked scorers inside `FilteredScorer` and select per layer.
 
 ---
 
@@ -152,6 +154,22 @@ instead of preselect + rescore (`candidates_limit` is then ignored):
 }
 ```
 
+Optional hybrid cutoff (Option 2): set `mask_from_layer` so coarse layers keep full
+distance and only layers `L < mask_from_layer` use the masked metric (`0` = no masking;
+omit with `masked=true` to mask every layer, matching legacy behaviour):
+
+```json
+{
+  "query": {
+    "nearest": {
+      "nearest": [0.5, -1.0, 2.0, 0.0, 3.0],
+      "focus": { "dims": [0, 4], "masked": true, "mask_from_layer": 1 }
+    }
+  },
+  "limit": 5
+}
+```
+
 ### Supported / unsupported
 
 | Supported | Not supported (returns 400) |
@@ -159,7 +177,8 @@ instead of preselect + rescore (`candidates_limit` is then ignored):
 | `nearest` on **dense** vectors | `recommend`, `discover`, `context`, fusion, MMR, formula, sample |
 | `nearest` + `focus` on dense vectors | Sparse / multi-dense vectors |
 | `nearest` + `focus.masked` on dense vectors (local shards) | `focus.masked` + quantization / turbo storage |
-| All distance metrics: Dot, Cosine, Euclid, Manhattan | `focus.masked` + `with_dims_explained` |
+| `nearest` + `focus.masked` + `mask_from_layer` (hybrid) | `focus.masked` + `with_dims_explained` |
+| All distance metrics: Dot, Cosine, Euclid, Manhattan | `mask_from_layer` without `masked=true` |
 | | `mmr` + `focus` together |
 
 ---
@@ -222,7 +241,8 @@ Remote shards: internal gRPC strips `dims_explained`; the **coordinator** comput
 |------|----------|--------|
 | Calculator unit tests (8) | `lib/segment/src/common/dims_explained.rs` | ✅ pass |
 | Focus rescore unit tests (5) | `lib/shard/src/query/dims_focus/tests.rs` | ✅ pass |
-| Masked scorer unit tests (3) | `lib/segment/src/vector_storage/query_scorer/masked_metric_query_scorer.rs` | added (build pending) |
+| Masked scorer unit tests (3) | `lib/segment/src/vector_storage/query_scorer/masked_metric_query_scorer.rs` | ✅ pass |
+| Hybrid layer cutoff tests | masked scorer + `graph_layers` + `collection_query` | ✅ pass |
 | OpenAPI integration | `tests/openapi/test_dims_explained.py` | ✅ added |
 | gRPC | — | TODO (extend `tests/basic_grpc_test.sh`) |
 
@@ -329,4 +349,34 @@ feat: masked distance search inside HNSW traversal
 Add focus.masked to compute dot/cosine over a subset of dimensions
 directly in the HNSW hot path via a MaskedMetricQueryScorer, trading
 approximate results for a real per-comparison speedup.
+```
+
+### Milestone 4 — Hybrid layer cutoff (`mask_from_layer`)
+
+Option 2: full-distance coarse layers, masked-distance bottom layers.
+
+- Optional `mask_from_layer` on REST/gRPC `DimsFocus` (next to `masked` / `dims`).
+  Semantics: layer `L` uses masked distance when `L < mask_from_layer`, else full.
+  - `0` → no masking (routed to plain nearest)
+  - omitted + `masked=true` → all layers masked (backward compatible with Milestone 3)
+  - `>= top_layer + 1` → all layers masked (same as legacy)
+- `FilteredScorer` builds both full and masked raw scorers for hybrid queries; 
+  `set_layer` at each HNSW layer boundary selects which scorer is active (visited/heap
+  logic untouched).
+- Carried as `QueryEnum::NearestMasked(..., Option<usize>)` /
+  `QueryVector::NearestMasked(..., Option<usize>)`.
+- Same fail-fast constraints as `focus.masked` (dense only; no quantization/turbo;
+  not with `with_dims_explained`; local shards only). `mask_from_layer` without
+  `masked=true` is rejected.
+- Unit tests: scorer layer switch; HNSW large-cutoff ≡ full mask; collection routing
+  for `0` / omitted / hybrid / invalid combos.
+
+**Suggested commit message:**
+
+```
+feat: hybrid HNSW masked traversal via mask_from_layer
+
+Add focus.mask_from_layer so coarse HNSW layers keep full distance while
+bottom layers use the masked metric, preserving navigability with a
+sweepable recall/latency trade-off.
 ```

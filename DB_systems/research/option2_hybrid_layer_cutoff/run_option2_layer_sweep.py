@@ -2,9 +2,10 @@
 """
 Step 2 / Option 2 — Hybrid: full-distance coarse layers, masked bottom layer(s).
 
-Requires XQdrant Rust change: add ``focus.mask_from_layer`` (0 = fully masked / current
-Option 1 behaviour; max_layer = fully unmasked). The traversal loop must branch the distance
-function on ``current_layer < mask_from_layer``.
+Requires XQdrant Rust change: add ``focus.mask_from_layer``. Layer ``L`` uses masked
+distance when ``L < mask_from_layer``, else full (``0`` = no masking / plain nearest;
+``>= top_layer+1`` = all layers masked / Option 1). Omit with ``masked=true`` for legacy
+full-mask behaviour.
 
 This script does a 2D sweep ``mask_from_layer x D_sub/D`` and emits recall + latency heatmaps.
 It is the most likely paper-worthy result (new Figure 4 candidate).
@@ -30,8 +31,7 @@ from bench_common import DEFAULT_EF_SEARCH, LatencyStats, TOP_K  # noqa: E402
 STEP_ID = "option2_hybrid_layer_cutoff"
 METRIC = "recall_latency_layer_heatmap"
 DEFAULT_RATIOS = [0.25, 0.5, 0.75]
-DEFAULT_LAYERS = [0, 1, 2, 3]  # mask_from_layer values (0 = fully masked)
-
+DEFAULT_LAYERS = [0, 1, 2, 3]  # mask_from_layer values (0 = no masking)
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)

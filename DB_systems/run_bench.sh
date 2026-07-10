@@ -126,14 +126,31 @@ build_exec_prefix() {
 }
 
 setup_venv() {
+    # Prefer uv when available: uv-created venvs intentionally ship without pip,
+    # so calling `pip` would fall through to the system interpreter (which Arch
+    # blocks via PEP 668 "externally-managed-environment"). Use `uv pip` instead.
+    if command -v uv &>/dev/null; then
+        if [[ ! -d "${VENV_DIR}" ]]; then
+            log "Creating Python virtual environment at ${VENV_DIR} (uv)"
+            uv venv "${VENV_DIR}"
+        fi
+        # shellcheck disable=SC1091
+        source "${VENV_DIR}/bin/activate"
+        log "Installing dependencies via uv pip"
+        uv pip install --quiet -r "${SCRIPT_DIR}/requirements.txt"
+        return
+    fi
+
     if [[ ! -d "${VENV_DIR}" ]]; then
         log "Creating Python virtual environment at ${VENV_DIR}"
         python3 -m venv "${VENV_DIR}"
     fi
     # shellcheck disable=SC1091
     source "${VENV_DIR}/bin/activate"
-    pip install --quiet --upgrade pip
-    pip install --quiet -r "${SCRIPT_DIR}/requirements.txt"
+    # Use `python3 -m pip` so we always target the venv interpreter, never a
+    # stray system `pip` on PATH.
+    python3 -m pip install --quiet --upgrade pip
+    python3 -m pip install --quiet -r "${SCRIPT_DIR}/requirements.txt"
 }
 
 # ---------------------------------------------------------------------------
