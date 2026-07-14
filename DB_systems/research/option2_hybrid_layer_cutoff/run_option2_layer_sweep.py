@@ -14,6 +14,19 @@ Metric folder: experiments/<ts>__option2_hybrid_layer_cutoff__recall_latency_lay
 
 Any config whose XQdrant does not yet understand ``mask_from_layer`` is recorded as
 unsupported (NaN cell) instead of crashing the sweep.
+
+Examples
+--------
+SIFT1M (D=128, already run):
+    python run_option2_layer_sweep.py --mode http \\
+        --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --no-provision --queries 500
+
+High-D synthetic re-run (D=768 and 1536 — tests whether speedup appears when FLOPs dominate):
+    python run_option2_layer_sweep.py --mode http \\
+        --xqdrant-url http://127.0.0.1:6333 \\
+        --dataset synthetic --dimensions 768 1536 \\
+        --num-vectors 50000 --queries 500 \\
+        --experiment-id option2_highD_d768_1536_n50k_q500_v1
 """
 
 from __future__ import annotations
@@ -32,20 +45,29 @@ STEP_ID = "option2_hybrid_layer_cutoff"
 METRIC = "recall_latency_layer_heatmap"
 DEFAULT_RATIOS = [0.25, 0.5, 0.75]
 DEFAULT_LAYERS = [0, 1, 2, 3]  # mask_from_layer values (0 = no masking)
+# High-D defaults: SIFT already covered D=128; the open question is whether
+# masked/hybrid becomes faster than full search once D is large enough that
+# FLOP savings beat gather/repack overhead.
+DEFAULT_DIMENSIONS = [768, 1536]
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--mode", choices=["http", "simulated"], default="http")
     p.add_argument("--qdrant-url", default="http://127.0.0.1:6333")
     p.add_argument("--xqdrant-url", default=None)
-    p.add_argument("--dimensions", type=int, nargs="+", default=[768])
+    p.add_argument("--dimensions", type=int, nargs="+", default=DEFAULT_DIMENSIONS,
+                   help="Synthetic dimensions to sweep (ignored for sift1m; default: 768 1536)")
     p.add_argument("--queries", type=int, default=200)
     p.add_argument("--k", type=int, default=TOP_K)
     p.add_argument("--ef-search", type=int, default=DEFAULT_EF_SEARCH)
     p.add_argument("--ratios", type=float, nargs="+", default=DEFAULT_RATIOS)
     p.add_argument("--layers", type=int, nargs="+", default=DEFAULT_LAYERS,
                    help="mask_from_layer values to sweep")
-    p.add_argument("--no-provision", action="store_true")
+    p.add_argument("--no-provision", action="store_true",
+                   help="Reuse an already-provisioned collection (skip create/upsert)")
+    p.add_argument("--experiment-id", default=None,
+                   help="Stable experiment folder name (default: auto timestamped)")
     cr.add_dataset_args(p)
     return p.parse_args()
 
@@ -54,18 +76,29 @@ def main() -> int:
     args = parse_args()
     xqdrant_url = args.xqdrant_url or args.qdrant_url
 
+    # Resolve actual dimensions after dataset selection (sift1m forces D=128).
+    datasets = list(cr.iter_datasets(args))
+    actual_dims = [d.dimension for d in datasets]
+
     run = cr.init_research_run(
         STEP_ID, METRIC,
-        mode=args.mode, dimensions=args.dimensions, queries=args.queries,
+        mode=args.mode, dimensions=actual_dims, queries=args.queries,
         qdrant_url=args.qdrant_url, xqdrant_url=xqdrant_url,
         requires_xqdrant_change="focus.mask_from_layer (Option 2)",
         sweep={"ratios": args.ratios, "layers": args.layers,
                "ef_search": args.ef_search, "k": args.k},
-        extra={"dataset": args.dataset},
+        extra={
+            "dataset": args.dataset,
+            "num_vectors": args.num_vectors or (datasets[0].num_vectors if datasets else None),
+            "requested_dimensions": list(args.dimensions),
+        },
+        run_id=args.experiment_id,
     )
     print(f"[option2] experiment: {run.root}")
+    print(f"[option2] dataset={args.dataset} dims={actual_dims} "
+          f"N={datasets[0].num_vectors if datasets else '?'} Q={args.queries}")
 
-    for dataset in cr.iter_datasets(args):
+    for dataset in datasets:
         dim = dataset.dimension
         queries = dataset.queries[: min(args.queries, dataset.num_queries)]
 
@@ -74,7 +107,10 @@ def main() -> int:
             client = cr.ResearchClient(
                 dataset, args.qdrant_url, xqdrant_url, provision=not args.no_provision
             )
-            client.warmup(queries, 200)
+            if not args.no_provision:
+                print(f"  Waiting for index build (D={dim}, N={dataset.num_vectors})...")
+                client.wait_for_indexing(expected_points=dataset.num_vectors)
+            client.warmup(queries, min(200, len(queries)))
 
         # full-vector baseline p50 for speedup normalization
         base_lat = LatencyStats()

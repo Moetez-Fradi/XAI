@@ -1,50 +1,46 @@
 # XQdrant Paper — LaTeX Build
 
-## Files
+## Status
 
-| File | Purpose |
-|------|---------|
-| `main.tex` | Full camera-ready draft (~12 pages with figures) |
-| `references.bib` | BibTeX bibliography |
-| `../plots/*.pdf` | Benchmark figures (referenced via `\graphicspath`) |
+`main.tex` is a **full first draft** covering:
+1. In-database attribution (`with_dims_explained`)
+2. Masked-distance HNSW (Options 1/2/4, cross-cuts X1–X3)
 
-## Compile
+Compiled PDF: **`main.pdf`** (article class, ~11 pages with figures).
 
-Requires the ACM `acmart` document class. On **BasicTeX**, install dependencies:
+Canonical experiment folders for numbers/plots:
+[`../experiments/README.md`](../experiments/README.md).
 
-```bash
-export PATH="/Library/TeX/texbin:$PATH"
-sudo tlmgr install preprint   # provides balance.sty (no standalone "balance" package in TL2026)
-```
+## Compile (this machine)
 
-If `newtx` is unavailable, the `newtxmath` warning is harmless (acmart falls back to default fonts).
+The host TeX tree is incomplete (missing `acmart` deps / `hyperref` extras).
+The draft uses a portable `article` preamble so it builds locally:
 
 ```bash
 cd DB_systems/paper
-pdflatex main
-bibtex main
-pdflatex main
-pdflatex main
+export TMPDIR=$PWD/.tmp   # avoid /tmp quota issues
+mkdir -p "$TMPDIR"
+pdflatex -interaction=nonstopmode main
+pdflatex -interaction=nonstopmode main
 ```
 
-Or upload `paper/` + `plots/` to [Overleaf](https://www.overleaf.com) using the ACM SIGCONF template.
+Figures are staged under `figures/` from `../experiments/`.
 
-## Figures
+## ACM / Overleaf camera-ready
 
-The manuscript references:
-- `plot1_latency_recall_d{768,1536}.pdf`
-- `plot2_throughput_d768.pdf`
-- `plot3_attribution_depth_d{768,1536}.pdf`
-- `plot4_subspace_speedup_d768.pdf`
+Local `acmart.cls` was generated from CTAN sources in `acmart/`.
+On a full TeX Live (or Overleaf ACM template):
 
-Regenerate plots from CSV without re-benchmarking:
+1. Restore the `acmart` preamble (see git history / `install_tex_deps.sh`).
+2. Install `texlive-publishers` (provides `acmart`) and friends.
+3. Point `\graphicspath` at `figures/`.
 
-```bash
-cd DB_systems
-python3 regenerate_plots.py
-```
+## Files
 
-## Anonymous submission
-
-`main.tex` uses `\documentclass[sigconf,anonymous,review]{acmart}`.
-Remove `anonymous,review` and populate author blocks for camera-ready.
+| Path | Purpose |
+|------|---------|
+| `main.tex` | Manuscript body |
+| `main.pdf` | Compiled first draft |
+| `references.bib` | BibTeX (for Overleaf/acmart builds) |
+| `figures/` | Staged plots |
+| `acmart/` | Upstream ACM class sources |

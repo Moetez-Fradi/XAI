@@ -1,5 +1,8 @@
 # Option 3 — Auxiliary projected index (`recall_memory_buildtime`)
 
+> **Campaign status:** not implemented / not run. Plan says **future work** unless a small
+> fixed focus-set palette exists. See `experiments/README.md`.
+
 **XQdrant change needed (largest):** a new index-build path per registered focus set, plus query
 routing to the projected index and a registration/selection API. This is the most invasive option.
 

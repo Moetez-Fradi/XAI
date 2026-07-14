@@ -91,8 +91,11 @@ mechanism; you re-run the Python scripts as many times as you like.**
 - **Keep/skip:** keep only if there is a small, known palette of focus sets; else future work.
 
 ### Step 4 — Option 4: Weighted blend distance
-- **Rust:** add `alpha: f32` to `DimsFocus`; scorer computes `α·d_full + (1-α)·d_focus`
-  (pairs with Option 2's cutoff for real latency gains).
+- **Rust:** add `alpha: f32` to `DimsFocus`; on focus layers the scorer computes
+  `α·s_full + (1-α)·s_focus` (higher-is-better RawScorer polarity — a linear blend
+  of the scores already returned, not a second distance convention). Coarse hybrid
+  layers stay full-only. Alpha alone is **not** a speedup (both scores are
+  computed); pair with Option 2’s `mask_from_layer` for latency.
 - **Script:** `run_option4_alpha_sweep.py` — sweep `α ∈ {0,0.25,0.5,0.75,1.0}` × `mask_from_layer`.
 - **Metric:** `recall_speed_alpha`.
 - **Keep/skip:** keep if blending lets you mask more aggressively while staying accurate; else drop.
@@ -130,9 +133,10 @@ change, use these names (or update the scripts' body builders in `research/commo
 | Field | Type | Used by | Step |
 |-------|------|---------|------|
 | `masked` | bool | already implemented | 1 |
-| `mask_from_layer` | int | Option 2 | 2 |
-| `alpha` | float | Option 4 | 4 |
-| `verify` | bool | verify pass | X3 |
+| `mask_from_layer` | int | Option 2 (implemented) | 2 |
+| `alpha` | float | Option 4 (implemented) | 4 |
+| `verify` | bool | verify pass / X3 (implemented) | X3 |
 
 Until a field is implemented, its script records `status="unsupported"` per config (it will not
-crash) so you can see exactly which Rust change is still pending.
+crash) so you can see exactly which Rust change is still pending. `alpha` / `mask_from_layer` /
+`verify` are implemented; remaining scripts that still report unsupported are for later steps.

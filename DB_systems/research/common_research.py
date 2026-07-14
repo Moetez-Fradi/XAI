@@ -73,6 +73,7 @@ def init_research_run(
     requires_xqdrant_change: str | None = None,
     sweep: dict[str, Any] | None = None,
     extra: dict[str, Any] | None = None,
+    run_id: str | None = None,
 ):
     """
     Create ``experiments/<ts>__<step_id>__<metric>/`` and return the ExperimentRun.
@@ -81,7 +82,8 @@ def init_research_run(
     runs later, you never have to guess which experiment produced which CSV.
     """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_id = f"{timestamp}__{step_id}__{metric}"
+    if run_id is None:
+        run_id = f"{timestamp}__{step_id}__{metric}"
     metadata: dict[str, Any] = {
         "step_id": step_id,
         "metric": metric,
@@ -133,7 +135,12 @@ def iter_datasets(args):
                             num_vectors=num_vectors, num_queries=num_queries)
     else:
         for dim in args.dimensions:
-            yield build_dataset("synthetic", dimension=dim, num_vectors=num_vectors)
+            yield build_dataset(
+                "synthetic",
+                dimension=dim,
+                num_vectors=num_vectors,
+                num_queries=num_queries,
+            )
 
 
 def full_norms_sq(dataset: Dataset) -> np.ndarray | None:
@@ -246,6 +253,10 @@ class ResearchClient:
 
     def warmup(self, queries: np.ndarray, count: int) -> None:
         self._backend.warmup(queries, count)
+
+    def wait_for_indexing(self, expected_points: int | None = None) -> None:
+        """Block until the collection is green / fully indexed (HTTP only)."""
+        self._backend.wait_for_indexing(expected_points=expected_points)
 
     def query(self, body: dict[str, Any], base_url: str | None = None) -> QueryOutcome:
         base = base_url or self._backend.xqdrant_url

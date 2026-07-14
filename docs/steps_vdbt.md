@@ -102,15 +102,17 @@ memory and only covers anticipated focus sets, not arbitrary ones.
 
 ## Option 4 — Weighted Blend Distance
 
-**What it is:** `d(q,v) = α · d_full(q,v) + (1-α) · d_focus(q,v)`, tunable per query, used
-throughout traversal.
+**What it is:** `score(q,v) = α · s_full(q,v) + (1-α) · s_focus(q,v)`, tunable per
+query — a linear blend of the **similarity scores** RawScorers already return
+(higher-is-better), not a second “distance” convention. Used on focus layers
+throughout traversal; with Option 2, coarse layers stay full-only.
 
 **Why try it:** Natural ablation axis producing a smooth recall-vs-speedup curve; cheap to
-implement since it's a linear combination of distances you already compute.
+implement since it's a linear combination of scores you already compute.
 
 **Code changes:**
-- Add `alpha: f32` to the focus query param.
-- Compute both full and masked distance per comparison (note: this does *not* save
+- Add `alpha: f32` to the focus query param (must be in `[0, 1]`; requires `masked=true`).
+- Compute both full and masked scores per blended comparison (note: this does *not* save
   full-distance computation cost — it only biases routing, so it's not a source of
   additional speedup on its own; likely to be paired with Option 2's layer cutoff for
   actual latency gains).

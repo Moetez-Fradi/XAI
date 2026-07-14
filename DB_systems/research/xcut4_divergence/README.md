@@ -1,5 +1,8 @@
 # Cross-cut X4 — Candidate-list divergence (`traversal_divergence`)
 
+> **Campaign status:** not run in the completed Options/X1–X3/Option4 sweep.
+> Optional supplementary figure only — see `experiments/README.md`.
+
 **XQdrant change needed (for the ideal metric):** log/return how often the masked-traversal
 *visited-node* set diverges from the full-traversal visited-node set. Instrument this during the
 Option 1/2 runs — no separate experiment. Feed the emitted CSV via `--divergence-csv`

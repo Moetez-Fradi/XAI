@@ -1,27 +1,24 @@
 # Option 1 — Naive full-masked traversal (`recall_vs_ratio`)
 
-**XQdrant change needed:** **None.** The shipped `focus.masked = true` already computes the
-reduced distance across *all* HNSW layers, which is exactly Option 1. This step is pure analysis.
+**XQdrant change:** **none** — shipped `focus.masked=true` masks all layers.
 
-**What it proves:** where recall collapses as the focus subspace shrinks — the motivating baseline
-for the hybrid (Option 2). Report the crossover ratio where Recall@10 drops below ~0.8.
+**What it proves:** recall collapse vs **full-vector GT** as `D_sub/D` shrinks.
 
 ## Run
 
 ```bash
-# live
-python run_option1_recall_collapse.py --mode http --xqdrant-url http://127.0.0.1:6333 --dimensions 768 1536
-
-# offline pipeline check (fabricated, tagged simulated=1)
-python run_option1_recall_collapse.py --mode simulated --dimensions 768 --queries 50
+python run_option1_recall_collapse.py --mode http \
+  --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --queries 500
 ```
 
-## Output
+## Canonical results
 
-`experiments/<ts>__option1_naive_masked__recall_vs_ratio/`
-- `results/option1_recall_vs_ratio_d{D}.csv` — recall vs full-vector GT + p50/p95 per ratio
-- `plots/option1_recall_vs_ratio_d{D}.png|pdf`
-- `manifest.json` — step, metric, mode, URLs, sweep
+| Corpus | Folder |
+|--------|--------|
+| SIFT | `experiments/2026-07-10_10-19-42__option1_naive_masked__recall_vs_ratio` |
 
-**Recall here is measured against full-vector ground truth**, not vanilla Qdrant — the graph itself
-can misroute under masking, so absolute recall is what matters.
+Full-GT recall@10 (SIFT): ~0.006 @0.1 → ~0.08 @0.25 → ~0.26 @0.5 → ~0.46 @0.75 → ~0.99 @1.0.
+
+**Note:** a separate high-D Option 1 HTTP run was not archived; use Option 2
+`mask_from_layer` all-masked / layer=0 cells + X2 coherence for high-D baseline
+narrative. Index: [`../../experiments/README.md`](../../experiments/README.md).

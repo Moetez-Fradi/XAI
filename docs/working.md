@@ -73,11 +73,13 @@ post-processed identically to `Nearest`.
   remote shards (`unimplemented!()` on that gRPC edge, mirroring the `FeedbackNaive` precedent).
 
 Carried end-to-end as a new query variant rather than a `SearchParams`/`CoreSearchRequest` field:
-`QueryEnum::NearestMasked(NamedQuery<VectorInternal>, Vec<u32>, Option<usize>)` at the shard layer and
-`QueryVector::NearestMasked(VectorInternal, Vec<u32>, Option<usize>)` at the segment layer. The optional
-third field is `mask_from_layer` (hybrid Option 2); `None` means mask every layer. The `raw_scorer`
+`QueryEnum::NearestMasked(NamedQuery<VectorInternal>, Vec<u32>, Option<usize>, bool, Option<OrderedFloat<f32>>)` at the shard layer and
+`QueryVector::NearestMasked(VectorInternal, Vec<u32>, Option<usize>, bool, Option<OrderedFloat<f32>>)` at the segment layer. The optional
+third field is `mask_from_layer` (hybrid Option 2); `None` means mask every layer. The fourth is
+`verify` (X3). The fifth is `alpha` (Option 4 blend). The `raw_scorer`
 dispatch builds the `MaskedMetricQueryScorer` for dense storage and rejects every other storage kind.
-Hybrid queries build both full and masked scorers inside `FilteredScorer` and select per layer.
+Hybrid / blend queries build both full and masked scorers inside `FilteredScorer` and select (or
+blend) per layer.
 
 ---
 
@@ -170,6 +172,39 @@ omit with `masked=true` to mask every layer, matching legacy behaviour):
 }
 ```
 
+Optional verify pass (X3): set `verify: true` with `masked: true` to re-score the
+returned top-k with full-vector distance after masked / hybrid traversal. Returned
+scores are then full-distance scores:
+
+```json
+{
+  "query": {
+    "nearest": {
+      "nearest": [0.5, -1.0, 2.0, 0.0, 3.0],
+      "focus": { "dims": [0, 4], "masked": true, "mask_from_layer": 1, "verify": true }
+    }
+  },
+  "limit": 5
+}
+```
+
+Optional weighted blend (Option 4): set `alpha` in `[0, 1]` with `masked: true` so
+focus layers score `α·s_full + (1-α)·s_focus` (higher-is-better RawScorer polarity).
+Coarse hybrid layers stay full-only. Alpha alone is not a speedup — both scores are
+computed on blended compares; pair with `mask_from_layer` for latency:
+
+```json
+{
+  "query": {
+    "nearest": {
+      "nearest": [0.5, -1.0, 2.0, 0.0, 3.0],
+      "focus": { "dims": [0, 4], "masked": true, "mask_from_layer": 1, "alpha": 0.25 }
+    }
+  },
+  "limit": 5
+}
+```
+
 ### Supported / unsupported
 
 | Supported | Not supported (returns 400) |
@@ -178,8 +213,9 @@ omit with `masked=true` to mask every layer, matching legacy behaviour):
 | `nearest` + `focus` on dense vectors | Sparse / multi-dense vectors |
 | `nearest` + `focus.masked` on dense vectors (local shards) | `focus.masked` + quantization / turbo storage |
 | `nearest` + `focus.masked` + `mask_from_layer` (hybrid) | `focus.masked` + `with_dims_explained` |
-| All distance metrics: Dot, Cosine, Euclid, Manhattan | `mask_from_layer` without `masked=true` |
-| | `mmr` + `focus` together |
+| `nearest` + `focus.masked` + `verify` (full-distance top-k rescore) | `mask_from_layer` / `verify` / `alpha` without `masked=true` |
+| `nearest` + `focus.masked` + `alpha` (weighted blend on focus layers) | `alpha` outside `[0, 1]` |
+| All distance metrics: Dot, Cosine, Euclid, Manhattan | `mmr` + `focus` together |
 
 ---
 
@@ -370,6 +406,9 @@ Option 2: full-distance coarse layers, masked-distance bottom layers.
   `masked=true` is rejected.
 - Unit tests: scorer layer switch; HNSW large-cutoff ≡ full mask; collection routing
   for `0` / omitted / hybrid / invalid combos.
+- **Measured:** SIFT hybrid recovers ~0.8–0.97 at layer≥1; high-D plateaus ~0.15–0.22;
+  e2e speedup still &lt; 1 (gather and repack). Canonical:
+  `option2_*_gather_*` folders. Doc: `xqdrant_docs/option2.md`.
 
 **Suggested commit message:**
 
@@ -379,4 +418,102 @@ feat: hybrid HNSW masked traversal via mask_from_layer
 Add focus.mask_from_layer so coarse HNSW layers keep full distance while
 bottom layers use the masked metric, preserving navigability with a
 sweepable recall/latency trade-off.
+```
+
+### Milestone 5 — X1 gather vs repack masked kernels
+
+Addresses masked-scorer latency (Option 2 speedup was &lt; 1 because every compare
+repacked into a scratch buffer).
+
+- `masked_kernels.rs`: **repack** (default) vs **gather** (AVX2 `vgatherdps` on x86;
+  scalar gather elsewhere). Select with `XQDRANT_MASKED_KERNEL=gather|repack`.
+- `MaskedMetricQueryScorer` calls the chosen kernel; gather ≡ repack numerically
+  (unit-tested).
+- Criterion bench `masked_kernel_bench` emits `d_sub,kernel,ns_per_op` CSV for
+  `plot_xcut1_kernel_bench.py`.
+- Run: `XQDRANT_KERNEL_BENCH_CSV_ONLY=1 cargo bench -p segment --bench masked_kernel_bench`
+  → `target/masked_kernel_bench/kernel_bench.csv`. Doc: `xqdrant_docs/X1.md`.
+- **Measured:** gather ~1.1–1.8× faster in microbench
+  (`2026-07-11_16-02-59__xcut1_…`); live Option 2 + gather still no e2e speedup &gt; 1.
+
+**Suggested commit message:**
+
+```
+feat: gather vs repack kernels for masked HNSW scoring
+
+Add an optional AVX2 gather path beside the existing scratch-buffer repack
+in MaskedMetricQueryScorer, selectable via XQDRANT_MASKED_KERNEL, plus a
+criterion bench that emits kernel_bench.csv for the X1 plot script.
+```
+
+### Milestone 6 — X3 verify pass (`focus.verify`)
+
+Optional final full-distance rescore of top-k after masked / hybrid traversal.
+
+- Optional `verify` on REST/gRPC `DimsFocus` (next to `masked` / `dims` /
+  `mask_from_layer`). Default false; requires `masked=true` (same fail-fast style
+  as `mask_from_layer` without masked).
+- When `verify=true`: run masked (or hybrid) HNSW as today, then re-score the
+  returned candidates with full-vector distance in `postprocess_search_result`
+  (same hook as quantization rescore). Returned scores are full-distance.
+- Carried as `QueryEnum::NearestMasked(..., verify)` /
+  `QueryVector::NearestMasked(..., verify)`. HNSW visited/heap logic untouched.
+- Same fail-fast constraints as `focus.masked` (dense only; no quantization/turbo;
+  not with `with_dims_explained`; local shards only).
+- Unit tests: routing for verify-without-masked / threaded flag; postprocess
+  verify=false ≡ masked scores; verify=true full scores + ranking change fixture.
+- Analysis: `DB_systems/research/xcut3_verify_pass/run_xcut3_verify.py` — primary
+  metric is **full-space** Recall@K; optional `--overfetch m` (`limit=m·k` then
+  keep top-k) and `--layers -1 1` (fully masked + hybrid). Subspace GT is
+  secondary only. Doc: `xqdrant_docs/X3.md`.
+- **Measured (2026-07-14):** `m=1` does not change Recall@K (same candidate set).
+  SIFT + `m=8` recovers full recall at large ratios (~0.46→0.91 @0.75) but adds
+  ~45 ms. High-D synthetic stays ≤~0.19 even with overfetch (X2 coherence).
+  Canonical folders: `…__xcut3_highD_fullGT_overfetch_hybrid_v1`,
+  `…__xcut3_sift_fullGT_overfetch_hybrid_v1`. See `experiments/README.md`.
+
+**Suggested commit message:**
+
+```
+feat: optional verify pass for masked HNSW search
+
+Add focus.verify so masked/hybrid traversal can finish with a full-distance
+rescore of returned candidates (use overfetch for recall recovery).
+```
+
+### Milestone 7 — Option 4 weighted blend (`focus.alpha`)
+
+Cheap recall/routing knob on top of Option 1/2: blend full and masked similarity
+scores on focus layers.
+
+- Optional `alpha: f32` on REST/gRPC `DimsFocus` (next to `masked` / `dims` /
+  `mask_from_layer` / `verify`). Must be in `[0, 1]`; requires `masked=true`.
+- Score: `α · s_full + (1-α) · s_focus` (RawScorer polarity; higher is better).
+  - `alpha` omitted → no blend (current behaviour)
+  - `alpha=0` → pure masked on focus layers; `alpha=1` → pure full on focus layers
+- With `mask_from_layer`: coarse (full) layers stay full-only; only masked layers
+  blend. All-layers masked + `alpha` blends every compare (both scores computed).
+- Orthogonal to `verify`: verify still re-scores returned top-k with pure full
+  distance. Focus half of the blend uses the same X1 gather/repack kernel path.
+- **Not a speedup alone** — both full and masked scores are computed on blended
+  compares; latency wins still come from Option 2’s layer cutoff.
+- Carried as `QueryEnum::NearestMasked(..., verify, alpha)` /
+  `QueryVector::NearestMasked(..., verify, alpha)` (`OrderedFloat` for `Hash`).
+- Unit tests: routing for alpha-without-masked / out-of-range; scorer alpha=0/1
+  and hybrid blend-only-on-focus-layers; verify+alpha still full-rescores.
+- Analysis: `DB_systems/research/option4_weighted_blend/run_option4_alpha_sweep.py`.
+  Doc: `xqdrant_docs/option4.md`.
+- **Measured (2026-07-14):** at ratio 0.25, hybrid recall is best at `alpha=0`
+  (SIFT ~0.84, D=768 ~0.21); raising alpha monotonically collapses toward the
+  layer=0 / X2-coherence floor. **Skip as Option 2 enhancement.** Canonical:
+  `…__option4_weighted_blend__recall_speed_alpha` (high-D + SIFT folders).
+  See `experiments/README.md`.
+
+**Suggested commit message:**
+
+```
+feat: weighted blend of full and masked scores via focus.alpha
+
+Add focus.alpha so masked/hybrid HNSW layers can blend full and focus
+similarity scores (ablation / tuning knob; hard layer cutoff remains preferred).
 ```

@@ -39,6 +39,10 @@ DB_systems/experiments/<YYYY-MM-DD_HH-MM-SS>__<step_id>__<metric>/
 So a folder name like `2026-07-09_10-15-00__option2_hybrid_layer_cutoff__recall_latency_layer_heatmap`
 tells you the step, the metric, and when it ran — no guessing later.
 
+**Which folders to cite for this study:** see
+[`../experiments/README.md`](../experiments/README.md) (canonical vs superseded runs,
+one-page story, cheat sheet). Design writeups: [`../../xqdrant_docs/README.md`](../../xqdrant_docs/README.md).
+
 ## Which step needs a Rust change vs. just a script
 
 | Step | Rust change | Script | Metric |

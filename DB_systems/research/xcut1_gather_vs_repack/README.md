@@ -1,37 +1,24 @@
-# Cross-cut X1 — SIMD gather vs. repack kernels (`kernel_gather_vs_repack`)
+# Cross-cut X1 — SIMD gather vs repack (`kernel_gather_vs_repack`)
 
-**XQdrant change needed:** the measurement is a **Rust `criterion` benchmark** comparing two ways
-to score a non-contiguous focus-dim subset:
-- **gather** kernels (`vgatherdps` on x86; manual gather loop on NEON), vs.
-- **repack** — copy focus dims into a small contiguous scratch buffer once per query, then reuse
-  the existing contiguous SIMD kernel (the `MaskedMetricQueryScorer` already keeps a `RefCell`
-  scratch buffer, so repack is largely in place).
+**XQdrant:** gather/repack kernels **implemented** (`XQDRANT_MASKED_KERNEL=gather|repack`).
+Criterion bench emits `d_sub,kernel,ns_per_op`. See `xqdrant_docs/X1.md`.
 
-Sweep `D_sub ∈ {32, 128, 384}`. Repack may win at small `D_sub` (gather-instruction overhead).
-
-The Rust bench must emit a CSV the plot script reads:
-
-```
-d_sub,kernel,ns_per_op
-32,gather,41.2
-32,repack,33.8
-128,gather,88.0
-...
-```
-
-## Run (plot side)
+## Run (bench + plot)
 
 ```bash
-# after the Rust bench writes kernel_bench.csv
-python plot_xcut1_kernel_bench.py --kernel-csv /path/to/kernel_bench.csv
+cd /mnt/data/xq/XQdrant
+XQDRANT_KERNEL_BENCH_CSV_ONLY=1 \
+XQDRANT_KERNEL_BENCH_CSV=$PWD/target/masked_kernel_bench/kernel_bench.csv \
+  cargo bench -p segment --bench masked_kernel_bench
 
-# validate the plot pipeline before the Rust bench exists (template data)
-python plot_xcut1_kernel_bench.py --make-example
+cd /mnt/data/xq/DB_systems/research/xcut1_gather_vs_repack
+python plot_xcut1_kernel_bench.py \
+  --kernel-csv /mnt/data/xq/XQdrant/target/masked_kernel_bench/kernel_bench.csv
 ```
 
-## Output
+## Canonical results
 
-`experiments/<ts>__xcut1_gather_vs_repack__kernel_gather_vs_repack/`
-- `results/kernel_bench.csv` (copied/normalized)
-- `plots/xcut1_kernel_gather_vs_repack.png|pdf`
-- `manifest.json`
+`experiments/2026-07-11_16-02-59__xcut1_gather_vs_repack__kernel_gather_vs_repack/`
+
+**Measured:** gather faster almost everywhere (~1.1–1.8×). E2e Option 2 + gather still
+has **no** wall-clock speedup &gt; 1 vs full search (see Option 2 gather folders).

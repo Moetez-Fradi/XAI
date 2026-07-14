@@ -483,12 +483,15 @@ class HttpBackend(SearchBackend):
         dim_indices: np.ndarray | None = None,
         focus_masked: bool = False,
         mask_from_layer: int | None = None,
+        verify: bool = False,
+        alpha: float | None = None,
         with_dims_explained: int | dict | None = None,
         with_vector: bool = False,
     ) -> dict[str, Any]:
         # REST shape for NearestQuery (see XQdrant openapi NearestQuery):
         #   { "nearest": <vector>, "focus": { "dims": [...], "masked": true,
-        #                                     "mask_from_layer": N } }
+        #                                     "mask_from_layer": N, "verify": true,
+        #                                     "alpha": 0.5 } }
         query_obj: dict[str, Any] = {"nearest": query.tolist()}
         if dim_indices is not None:
             focus: dict[str, Any] = {
@@ -498,6 +501,10 @@ class HttpBackend(SearchBackend):
                 focus["masked"] = True
                 if mask_from_layer is not None:
                     focus["mask_from_layer"] = int(mask_from_layer)
+                if verify:
+                    focus["verify"] = True
+                if alpha is not None:
+                    focus["alpha"] = float(alpha)
             else:
                 focus["candidates_limit"] = max(k * 10, ef_search)
             query_obj["focus"] = focus
