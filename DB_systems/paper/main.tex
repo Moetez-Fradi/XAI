@@ -11,6 +11,8 @@
 \usepackage{amsmath,amssymb}
 \usepackage{url}
 \usepackage{array}
+\usepackage[section]{placeins} % Added to fix float crowding
+
 % Note: hyperref/natbib omitted — this host's TeX tree is incomplete.
 % Prefer Overleaf + acmart for camera-ready (see README).
 
@@ -139,7 +141,7 @@ Per explained hit, Algorithm~\ref{alg:attribution} materializes $D$ terms and
 selects the top-$m$ by absolute contribution in average $\mathcal{O}(D)$ time
 (\texttt{select\_nth\_unstable}).
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{minipage}{0.92\linewidth}
 \small
@@ -234,6 +236,7 @@ $Q{=}500$, $k{=}10$, $\texttt{ef\_search}{=}128$.
 Canonical folders are listed in \texttt{DB\_systems/experiments/README.md};
 figures below are copied into \texttt{paper/figures/}.
 
+\FloatBarrier
 \subsection{Attribution and Focus Rescoring}
 \label{sec:eval-attr}
 
@@ -246,7 +249,7 @@ across $m\in\{1,\ldots,50\}$ while post-query extraction sits near 7.8\,ms
 Figure~\ref{fig:subspace-rescore}: preselect-and-rescore focus yields speedup
 $<1$ (0.84--0.87), motivating masked traversal rather than rescoring alone.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{plot1_latency_recall_d768.pdf}
   \caption{Attribution suite: latency--recall at $D{=}768$ with
@@ -254,14 +257,14 @@ $<1$ (0.84--0.87), motivating masked traversal rather than rescoring alone.
   \label{fig:latency-recall}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{plot3_attribution_depth_d768.pdf}
   \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$).}
   \label{fig:attribution-depth}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{plot4_subspace_speedup_d768.pdf}
   \caption{Focus \emph{rescoring} speedup $T_{\mathrm{full}}/T_{\mathrm{sub}}$
@@ -269,13 +272,14 @@ $<1$ (0.84--0.87), motivating masked traversal rather than rescoring alone.
   \label{fig:subspace-rescore}
 \end{figure}
 
+\FloatBarrier
 \subsection{Option 1: Naive Masking Collapses Full Recall}
 
 Figure~\ref{fig:option1}: on SIFT1M, all-layer masked search vs.\ \emph{full}
 ground truth yields Recall@10 $\approx 0.006 / 0.079 / 0.257 / 0.464 / 0.989$ at
 ratios $0.1 / 0.25 / 0.5 / 0.75 / 1.0$.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option1_sift.png}
   \caption{Option~1 on SIFT1M: Recall@10 vs.\ full-space GT as $D_{\mathrm{sub}}/D$
@@ -283,6 +287,7 @@ ratios $0.1 / 0.25 / 0.5 / 0.75 / 1.0$.
   \label{fig:option1}
 \end{figure}
 
+\FloatBarrier
 \subsection{Option 2: Hybrid Cutoff Recovers Navigability}
 
 Figure~\ref{fig:option2}: with gather kernels, SIFT hybrid cutoffs $L\ge 1$
@@ -293,7 +298,7 @@ $\sim$0.01$\rightarrow\sim$0.20) but plateau near 0.15--0.22.
 \textbf{End-to-end speedup vs.\ full search remains $<1$} in every gathered cell
 (Figure~\ref{fig:option2-speed}).
 
-\begin{figure*}[t]
+\begin{figure}[htbp]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -307,15 +312,16 @@ $\sim$0.01$\rightarrow\sim$0.20) but plateau near 0.15--0.22.
   \end{minipage}
   \caption{Option~2 (\texttt{mask\_from\_layer} $\times$ ratio) with gather kernel.}
   \label{fig:option2}
-\end{figure*}
+\end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option2_sift_speedup.png}
   \caption{Option~2 SIFT speedup vs.\ full search: no cell exceeds $1\times$.}
   \label{fig:option2-speed}
 \end{figure}
 
+\FloatBarrier
 \subsection{X1: Gather Wins Microbenchmarks, Not Wall-Clock}
 
 Figure~\ref{fig:xcut1}: gather is $\sim$1.24$\times$/1.14$\times$/1.42$\times$/1.77$\times$
@@ -323,13 +329,14 @@ faster than repack at $D_{\mathrm{sub}}\in\{32,128,384,768\}$ (ns/op).
 Re-running Option~2 with gather leaves recall intact but still shows
 \textbf{zero} end-to-end cells with speedup $>1$.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_xcut1_kernels.png}
   \caption{X1: masked Dot kernel throughput (repack vs.\ gather).}
   \label{fig:xcut1}
 \end{figure}
 
+\FloatBarrier
 \subsection{X2: Coherence Predicts High-$D$ Failure}
 
 Figure~\ref{fig:xcut2}: overlap@10 grows with ratio but stays low on synthetic
@@ -337,7 +344,7 @@ $D{=}768$ ($\sim$0.007$\rightarrow$0.30 from ratio 0.1$\rightarrow$0.75); SIFT i
 somewhat higher ($\sim$0.01$\rightarrow$0.46).
 This explains why hybrid navigability does not imply full-space recall recovery.
 
-\begin{figure*}[t]
+\begin{figure}[htbp]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -351,8 +358,9 @@ This explains why hybrid navigability does not imply full-space recall recovery.
   \end{minipage}
   \caption{X2: subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio.}
   \label{fig:xcut2}
-\end{figure*}
+\end{figure}
 
+\FloatBarrier
 \subsection{X3: Verify Needs Overfetch; Costly When It Helps}
 
 Evaluating against \textbf{full-space} GT (corrected harness):
@@ -363,7 +371,7 @@ $\sim$+45\,ms ($\sim$1.5$\rightarrow\sim$46\,ms).
 High-$D$ synthetic stays $\le\sim$0.19 even with $m{=}8$
 (Figure~\ref{fig:xcut3}).
 
-\begin{figure*}[t]
+\begin{figure}[htbp]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -377,8 +385,9 @@ High-$D$ synthetic stays $\le\sim$0.19 even with $m{=}8$
   \end{minipage}
   \caption{X3: full-space Recall@10 for masked vs.\ verify at overfetch $m\in\{1,8\}$.}
   \label{fig:xcut3}
-\end{figure*}
+\end{figure}
 
+\FloatBarrier
 \subsection{Option 4: Blend Is Dominated by $\alpha{=}0$}
 
 Figure~\ref{fig:option4}: at ratio 0.25, SIFT hybrid recall is best at
@@ -386,7 +395,7 @@ $\alpha{=}0$ ($\sim$0.84 for $L\ge 1$) and collapses monotonically toward the
 coherence floor as $\alpha\rightarrow 1$.
 Hard \texttt{mask\_from\_layer} without blend is strictly preferable.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option4_sift.png}
   \caption{Option~4 on SIFT: recall vs.\ $\alpha$ for cutoffs $\{0,1,2\}$
@@ -394,9 +403,10 @@ Hard \texttt{mask\_from\_layer} without blend is strictly preferable.
   \label{fig:option4}
 \end{figure}
 
+\FloatBarrier
 \subsection{Summary Table}
 
-\begin{table*}[t]
+\begin{table}[htbp]
   \centering
   \caption{Keep / demote map for the masked-distance study (canonical runs).}
   \label{tab:keep}
@@ -416,7 +426,9 @@ Hard \texttt{mask\_from\_layer} without blend is strictly preferable.
     Option 4 $\alpha$ & Skip enh. & Best at $\alpha{=}0$ (= Option~2) \\
     \hline
   \end{tabular}
-\end{table*}
+\end{table}
+
+\clearpage
 
 %=============================================================================
 \section{Related Work}
