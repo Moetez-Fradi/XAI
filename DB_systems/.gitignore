@@ -1,8 +1,12 @@
+# Local environments / data (regenerable)
 .venv/
-.DS_Store
-.paper_bench_storage/
 data/
 .sift_fixture/
+.paper_bench_storage/
+.mplconfig/
+
+# IDE / secrets
+.DS_Store
 .idea/
 .vscode/
 .env
@@ -10,3 +14,13 @@ data/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Experiment outputs (regenerable; keep scripts under research/)
+experiments/
+
+# Superseded by ../../deliverable/ — do not re-add
+paper/
+
+# Empty / scratch placeholders
+plots/
+expanding short paper/

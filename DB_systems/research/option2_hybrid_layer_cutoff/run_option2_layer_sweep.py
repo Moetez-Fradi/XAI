@@ -206,14 +206,14 @@ def main() -> int:
         cr.heatmap(
             recall_mat, row_labels=args.layers, col_labels=args.ratios,
             xlabel="Subspace ratio (D_sub / D)", ylabel="mask_from_layer",
-            title=f"{prefix}Option 2 recall@K (D={dim}, n={args.trials})",
+            title=f"{prefix}M2 recall@K (D={dim}, n={args.trials})",
             stem=f"option2_recall_heatmap_d{dim}", cbar_label="Recall@K (mean)",
             fmt="{:.2f}", std_matrix=recall_std,
         )
         cr.heatmap(
             speed_mat, row_labels=args.layers, col_labels=args.ratios,
             xlabel="Subspace ratio (D_sub / D)", ylabel="mask_from_layer",
-            title=f"{prefix}Option 2 speedup vs full (D={dim}, n={args.trials})",
+            title=f"{prefix}M2 speedup vs full (D={dim}, n={args.trials})",
             stem=f"option2_speedup_heatmap_d{dim}", cbar_label="Speedup (x, mean)",
             fmt="{:.2f}", std_matrix=speed_std,
         )

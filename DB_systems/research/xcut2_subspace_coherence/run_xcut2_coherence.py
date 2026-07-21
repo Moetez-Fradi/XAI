@@ -117,7 +117,7 @@ def main() -> int:
             },
             xlabel="Subspace ratio (D_sub / D)",
             ylabel="Coherence (mean ± std)",
-            title=f"Subspace coherence (D={dim}, n={args.trials})",
+            title=f"C1: Subspace coherence (D={dim}, n={args.trials})",
             stem=f"xcut2_coherence_d{dim}",
             hline=0.8,
         )

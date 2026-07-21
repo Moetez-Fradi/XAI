@@ -1,19 +1,30 @@
-# Short-track deliverable (ACM sigconf)
+# EDBT 2027 short research paper (XQdrant)
 
-**Status (2026-07-21):** ready to skim for short-track submission.
-
-## What is frozen here
-- Unified-host HTTP evals with **T=5** mean±std for attribution (A/C/D), SIFT M1/M2, and SIFT coherence (C1).
-- Figures under `figures/` refreshed from those runs (M3 panel restored from the canonical SIFT α×cutoff sweep).
-- `main.tex` numbers aligned with those results (~1.8× attribution speedup; updated M1/M2 recall ranges).
+**Track:** Research short paper (≤6 pages body + unlimited Artifacts/references).  
+**Title prefix:** `[Short Paper]` (required by CFP).  
+**Template:** official EDBT A4 / ACM `sigconf` (`edbt-macros.tex`, `balance=false`).
 
 ## Build
-Requires a TeX Live with `acmart` (TinyTeX works):
 
 ```bash
-export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"   # if using TinyTeX
 pdflatex main && bibtex main && pdflatex main && pdflatex main
 ```
 
-## Not required for short track
-Items in `DB_systems/step 2/steps.md` beyond variance (formal M2 complexity writeup, second dataset, filtering/quantization studies, case study) — those are full-track expansions.
+Auxiliary TeX files (`*.aux`, `*.log`, `*.cut`, …) are gitignored; `main.pdf` is kept for convenience.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `main.tex` / `main.bib` | Paper source |
+| `edbt-macros.tex` | Official EDBT proceedings macros |
+| `figures/` | Canonical plots (M1/M2/M3/K1/C1/V1 labels) |
+| `artifact-stub/` | README to push to the artifact GitHub stub |
+
+## Before CMT submit
+
+1. Confirm author / affiliation / ORCID on the PDF.
+2. Populate the artifact repo linked in §Artifacts (or attach a CMT zip).
+3. Verify body content ends by page 6 (Artifacts + refs may continue).
+
+Research harness: `../DB_systems/`. Naming glossary: `../docs/README.md`.

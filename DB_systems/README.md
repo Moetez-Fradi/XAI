@@ -14,7 +14,9 @@ Automated, end-to-end evaluation harness for **XQdrant** — our Qdrant fork tha
 | Top-m selection | Client: full sort O(D log D)                                                 | Server: bounded selection O(D log m) via `select_nth_unstable`                     |
 
 
-See `[../working.md](../working.md)` for full design notes.
+See [`../docs/working.md`](../docs/working.md) for design notes and
+[`../docs/README.md`](../docs/README.md) for the paper↔research naming map
+(M1/M2/… vs Option/X).
 
 ## Baselines evaluated
 

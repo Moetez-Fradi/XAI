@@ -352,7 +352,7 @@ def main() -> int:
                 yerr=yerr,
                 xlabel="Subspace ratio (D_sub / D)",
                 ylabel=f"Recall@{args.k} (full-space GT, mean ± std)",
-                title=f"{prefix}X3 verify full-space recall (D={dim}, layer={layer_label}, n={args.trials})",
+                title=f"{prefix}V1 verify full-space recall (D={dim}, layer={layer_label}, n={args.trials})",
                 stem=f"xcut3_verify_full_recall_d{dim}_layer_{layer_label}",
                 hline=None,
             )
@@ -385,7 +385,7 @@ def main() -> int:
                     },
                     xlabel="Subspace ratio (D_sub / D)",
                     ylabel=f"Recall@{args.k} (subspace GT, mean ± std)",
-                    title=f"{prefix}X3 subspace GT (ref only; D={dim}, layer={layer_label}, n={args.trials})",
+                    title=f"{prefix}V1 subspace GT (ref only; D={dim}, layer={layer_label}, n={args.trials})",
                     stem=f"xcut3_verify_subspace_recall_d{dim}_layer_{layer_label}",
                     hline=None,
                 )

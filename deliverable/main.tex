@@ -1,47 +1,59 @@
-%% XQdrant — ACM sigconf conversion (double-blind submission version)
-%% Uses the official acmart class (sigconf, review, anonymous options).
+%% XQdrant — EDBT 2027 short research paper
+%% Official EDBT A4 / ACM sigconf skeleton (see edbt-macros.tex).
 %% Compile:
 %%   pdflatex main && bibtex main && pdflatex main && pdflatex main
 %%
-%% BEFORE CAMERA-READY:
-%%  - remove "review,anonymous" from \documentclass options
-%%  - restore \author / \affiliation / \email
-%%  - fill in \acmConference, \acmYear, \acmDOI, \acmISBN once ACM sends them
-%%  - add \setcopyright{...} per ACM's rights email
-%%  - re-point \texttt{...} artifact paths (see NOTE in Sec. 5.1 and Sec. 1)
-%%    to an anonymized mirror (e.g. anonymous.4open.science) instead of a
-%%    path that could identify the repository/author.
+%% BEFORE SUBMISSION:
+%%  - replace author / affiliation / ORCID placeholders with real values
+%%    (EDBT is single-anonymous: names MUST appear on the PDF)
+%%  - confirm every author is registered on CMT with ORCID
+%%  - ensure title still starts with "[Short Paper]"
+%%  - upload artifacts zip OR a no-access-monitoring repo link on CMT
+%%  - keep body ≤ 6 pages; Artifacts + references are unlimited
 
-\documentclass[sigconf,review,anonymous]{acmart}
+%% balance=false: acmart otherwise auto-\balance's the last page into two
+%% short columns when only a few references overflow.
+\documentclass[sigconf,review,balance=false]{acmart}
+
+%% EDBT: A4 paper (official template override of letter-size defaults)
+\geometry{twoside=true, head=13pt,
+     a4paper,
+     includeheadfoot, columnsep=2pc,
+     top=57pt, bottom=73pt, inner=54pt, outer=54pt,
+     marginparwidth=2pc,heightrounded
+     }%
+
+\AtBeginMaketitle{%
+  \input{edbt-macros}
+}% \AtBeginMaketitle
+
 \usepackage{graphicx}
+\usepackage{array}
 \graphicspath{{figures/}}
 
-%% Suppress ACM's boilerplate rights/copyright block during review;
-%% restore proper \setcopyright{...} + \acmConference{...} for camera-ready.
-\setcopyright{none}
-\acmConference[Anonymous Submission]{Anonymous Conference}{Anonymous Date}{Anonymous City, Country}
-\acmYear{2026}
-\acmDOI{}
-\acmISBN{}
-\acmPrice{}
-\settopmatter{printacmref=false}
-\renewcommand\footnotetextcopyrightpermission[1]{}
+%% Allow breaks after \_ so long identifiers wrap in-column.
+\newcommand{\breakablecode}[1]{%
+  {\ttfamily
+    \renewcommand{\_}{\textunderscore\allowbreak}%
+    #1%
+  }}
 
 \begin{document}
 
-\title{XQdrant: In-Database Attribution and Masked-Distance Subspace Search
-  over HNSW}
+%% EDBT short-paper rule: title MUST start with "[Short Paper]"
+\title{[Short Paper] XQdrant: In-Database Attribution and Masked-Distance
+  Subspace Search over HNSW}
 
-%% Anonymous for double-blind review.
-\author{Anonymous Author(s)}
+%% EDBT is single-anonymous: include real names/affiliations/ORCID before submit.
+\author{Moetez Fradi}
+\email{moetez.fradi@insat.ucar.tn}
 \affiliation{%
-  \institution{Anonymous Institution}
-  \city{Anonymous City}
-  \country{Anonymous Country}
+  \institution{INSAT}
+  \city{Tunis}
+  \country{Tunisia}
 }
-\email{anonymous@domain.edu}
 
-\renewcommand{\shortauthors}{Anonymous et al.}
+\renewcommand{\shortauthors}{Fradi}
 
 \begin{abstract}
 Vector databases return opaque scalar similarities over high-dimensional
@@ -135,8 +147,13 @@ latency win, we do not paper over it: we identify the mechanism (navigability
 vs.\ arithmetic cost) and report exactly which configurations are and are not
 worth shipping.
 
-\paragraph{Contributions.}
+\subsection*{Contributions}
+\vspace{-0.35em}
 \begin{itemize}
+  \setlength{\itemsep}{0.2em}
+  \setlength{\parsep}{0pt}
+  \setlength{\topsep}{0.15em}
+  \setlength{\partopsep}{0pt}
   \item \textbf{In-database attribution (positive result).} Exact score
     decomposition with order-statistic top-$m$ selection; recall-neutral vs.\
     vanilla Qdrant and $\sim$1.8$\times$ faster than post-query extraction.
@@ -148,10 +165,9 @@ worth shipping.
   \item \textbf{Coherence as a predictive diagnostic.} Subspace/full-space
     $k$-NN overlap predicts when a cheap verify pass can recover full-space
     recall and when it cannot, independent of the traversal strategy used.
-  \item \textbf{Reproducible artifacts.} A curated experiment index and
-    harness (anonymized link to be added after review; see
-    Section~\ref{sec:eval}) mapping every claim above to a canonical script
-    and dataset.
+  \item \textbf{Reproducible artifacts.} A public experiment index and harness
+    (Section~\ref{sec:artifacts}) mapping every claim above to a canonical
+    script and dataset.
 \end{itemize}
 
 %=============================================================================
@@ -196,7 +212,8 @@ XQdrant injects attribution at the collection coordinator after shard merge,
 with an early return when \texttt{with\_dims\_explained} is absent — zero
 overhead on the unmodified hot path. Per explained hit, Algorithm~\ref{alg:attribution}
 materializes $D$ terms and selects the top-$m$ by absolute contribution in
-average $\mathcal{O}(D)$ time via \texttt{select\_nth\_unstable}.
+average $\mathcal{O}(D)$ time via Rust's order-statistic selection
+(\breakablecode{select\_nth\_unstable}).
 
 \begin{figure}[htbp]
 \centering
@@ -213,10 +230,10 @@ average $\mathcal{O}(D)$ time via \texttt{select\_nth\_unstable}.
 \end{figure}
 
 \texttt{nearest.focus} without masking still performs full HNSW preselection
-and rescores on $\mathcal{F}$ afterward — useful for interpretability-constrained
-ranking but, as Section~\ref{sec:eval-attr} shows, not a traversal-cost
-reduction. That gap is exactly what motivates masked traversal
-(Section~\ref{sec:masked}).
+and rescores on $\mathcal{F}$ afterward — useful when ranking must respect a
+focus subspace, but, as Section~\ref{sec:eval-attr} shows, not a
+traversal-cost reduction. That gap is exactly what motivates masked
+traversal (Section~\ref{sec:masked}).
 
 %=============================================================================
 \section{Masked-Distance HNSW: Design Space}
@@ -237,7 +254,7 @@ three. Table~\ref{tab:namemap} fixes the naming used for the rest of the paper.
     \textbf{Name} & \textbf{What it is} \\
     \hline
     M1 & Naive: mask every HNSW layer \\
-    M2 & Hybrid: full distance for layers $\geq L$, masked below (\texttt{mask\_from\_layer}$=L$) \\
+    M2 & Hybrid: full distance for layers $\geq L$, masked below (\breakablecode{mask\_from\_layer}$=L$) \\
     M3 & M2 plus an $\alpha$-weighted blend of full/masked scores on masked layers \\
     \hline
     K1 & Kernel choice: repack-then-score vs.\ SIMD gather, orthogonal to M1--M3 \\
@@ -275,11 +292,12 @@ the graph was built on (Section~\ref{sec:eval-m1}).
 \subsection{M2 --- Hybrid Layer Cutoff}
 
 Layer $\ell$ uses the masked scorer iff $\ell < L$ for cutoff
-$L=\texttt{mask\_from\_layer}$; otherwise full distance is used. $L=0$ recovers
-plain (unmasked) nearest search; a large $L$ recovers M1. The implementation
-builds dual raw scorers inside \texttt{FilteredScorer} and switches via
-\texttt{set\_layer} at layer boundaries — visited-set and heap logic are
-unchanged, so this composes with the rest of the query pipeline for free.
+$L ={}$\breakablecode{mask\_from\_layer}; otherwise full distance is used.
+$L{=}0$ recovers plain (unmasked) nearest search; a large $L$ recovers M1.
+The implementation builds dual raw scorers inside \texttt{FilteredScorer}
+and switches via \texttt{set\_layer} at layer boundaries — visited-set and
+heap logic are unchanged, so this composes with the rest of the query
+pipeline for free.
 
 \subsection{M3 --- Weighted Blend}
 
@@ -293,10 +311,10 @@ recovers recall at a fixed cutoff more cheaply than raising $L$.
 
 Masked scoring can copy focus dims into a contiguous scratch buffer before
 calling the existing SIMD kernels (\emph{repack}), or gather them directly
-in-register (AVX2 \texttt{vgatherdps} for Dot/Cosine/Euclidean on x86, scalar
-fallback elsewhere). We add the gather path, selectable via
-\texttt{XQDRANT\_MASKED\_KERNEL}, and treat kernel choice as orthogonal to
-M1--M3: any of the three can use either kernel.
+in-register (AVX2 gather for Dot/Cosine/Euclidean on x86; scalar fallback
+elsewhere). We add the gather path, selectable via environment variable
+\breakablecode{XQDRANT\_MASKED\_KERNEL}, and treat kernel choice as
+orthogonal to M1--M3: any of the three can use either kernel.
 
 \subsection{V1 --- Verify and Overfetch}
 
@@ -320,33 +338,29 @@ detailed results.
 
 \subsection{Setup}
 
-\paragraph{Hardware and protocol.} Both the attribution suite and the
-masked-distance suite run on the \emph{same} Linux x86\_64 host via HTTP
-against local release binaries (vanilla Qdrant and XQdrant), with
-\texttt{XQDRANT\_MASKED\_KERNEL=gather} unless a kernel comparison is the
-subject of the experiment. Absolute latencies are therefore comparable across
-suites. Unless a caption says otherwise, each reported configuration is the
-mean of $T{=}5$ independent trials that resample the timed query set (and,
-where applicable, the focus-dimension subset) under distinct seeds; we quote
-sample standard deviation inline or as error bars. Within each trial, latency
-summaries use the per-query p50 as before. Orchestration lives in
-\texttt{DB\_systems/run\_unified\_paper\_bench.sh}. Kernel microbenchmarks
+\paragraph{Hardware and protocol.} Both suites run on the \emph{same} Linux
+x86\_64 host via HTTP against local release binaries (vanilla Qdrant and
+XQdrant), with gather as the default masked kernel unless a kernel comparison
+is the subject. Absolute latencies are therefore comparable across suites.
+Unless a caption says otherwise, each reported configuration is the mean of
+$T{=}5$ independent trials that resample the timed query set (and, where
+applicable, the focus-dimension subset) under distinct seeds; we quote sample
+standard deviation inline or as error bars. Within each trial, latency
+summaries use the per-query p50 as before. Orchestration lives in the unified
+paper bench script (Section~\ref{sec:artifacts}). Kernel microbenchmarks
 (Section~\ref{sec:eval-kernel}) are offline ns/op measurements on the same
-host class; the M3 $\alpha$-sweep figure is a canonical SIFT cutoff$\times\alpha$
-panel whose qualitative ranking ($\alpha{=}0$ best) matches the hybrid M2
-result.
+host class; the M3 $\alpha$-sweep figure is a canonical SIFT
+cutoff$\times\alpha$ panel whose qualitative ranking ($\alpha{=}0$ best)
+matches the hybrid M2 result.
 
-\paragraph{Attribution suite.} Synthetic corpora $N{=}10\mathrm{k}$, $Q{=}500$,
-$D\in\{768,1536\}$; baselines: vanilla Qdrant, post-query
-extract-plus-client-top-$m$, and XQdrant.
+\paragraph{Attribution suite.} Synthetic corpora with $N{=}10\mathrm{k}$
+vectors and $Q{=}500$ queries at $D\in\{768,1536\}$; baselines are vanilla
+Qdrant, post-query client-side top-$m$ extraction, and XQdrant.
 
 \paragraph{Masked-distance suite.} Corpora: SIFT1M ($D{=}128$) and synthetic
-$N{=}50\mathrm{k}$ at $D\in\{768,1536\}$, $Q{=}500$, $k{=}10$,
-\texttt{ef\_search}$=128$. The full experiment index, scripts, and canonical
-CSVs for every claim below will be released at an anonymized artifact link
-upon publication (omitted here to preserve double-blind review); a
-placeholder/anonymized mirror can be substituted before submission if the
-venue requires an artifact URL at review time.
+data with $N{=}50\mathrm{k}$ at $D\in\{768,1536\}$, $Q{=}500$, $k{=}10$,
+and \texttt{ef}=128. Scripts, CSVs, and the experiment index for every claim
+below are linked from Section~\ref{sec:artifacts}.
 
 \subsection{Attribution and Focus Rescoring Are Not the Same Problem}
 \label{sec:eval-attr}
@@ -396,13 +410,12 @@ section.
 
 If rescoring cannot help, the natural next attempt is to mask distance
 \emph{during} traversal (M1). Figure~\ref{fig:m1} shows this fails sharply on
-SIFT1M: mean Recall@10 against full-space ground truth is
-$0.012 / 0.077 / 0.250 / 0.490 / 0.998$
-($\pm\!0.002$--$0.014$) at $D_{\mathrm{sub}}/D = 0.1 / 0.25 / 0.5
-/ 0.75 / 1.0$. This is the navigability breakdown predicted in
-Section~\ref{sec:background}: graph edges encode full-space proximity, and
-masked greedy descent has no guarantee of reaching the region containing the
-true neighbors once that proximity assumption is violated.
+SIFT1M: mean Recall@10 against full-space ground truth is $0.012$, $0.077$,
+$0.250$, $0.490$, and $0.998$ ($\pm\!0.002$--$0.014$) at subspace ratios
+$0.1$, $0.25$, $0.5$, $0.75$, and $1.0$. This is the navigability breakdown
+predicted in Section~\ref{sec:background}: graph edges encode full-space
+proximity, and masked greedy descent has no guarantee of reaching the region
+containing the true neighbors once that proximity assumption is violated.
 
 \begin{figure}[htbp]
   \centering
@@ -471,7 +484,7 @@ gap identified in Section~\ref{sec:eval-m2}.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_xcut1_kernels.png}
-  \caption{Masked Dot-product kernel throughput: repack vs.\ gather.}
+  \caption{K1: Masked Dot-product kernel throughput, repack vs.\ gather.}
   \label{fig:kernel}
 \end{figure}
 
@@ -495,16 +508,16 @@ the verification pass in Section~\ref{sec:eval-verify} can and cannot help.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{fig_xcut2_sift.png}
-  \caption{Subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio, SIFT1M
-    (mean$\pm$std, $T{=}5$).}
+  \caption{C1: Subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio,
+    SIFT1M (mean$\pm$std, $T{=}5$).}
   \label{fig:coherence}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{fig_xcut2_d768.png}
-  \caption{Same measurement on synthetic $D{=}768$: lower coherence throughout,
-    consistent with the lower recall ceiling in Figure~\ref{fig:m2-d768}.}
+  \caption{C1 on synthetic $D{=}768$: lower coherence throughout, consistent
+    with the lower recall ceiling in Figure~\ref{fig:m2-d768}.}
   \label{fig:coherence-d768}
 \end{figure}
 
@@ -528,16 +541,16 @@ the first place.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{fig_xcut3_sift_full.png}
-  \caption{Full-space Recall@10, masked vs.\ verify, at overfetch $m\in\{1,8\}$,
-    SIFT1M with hybrid $L{=}1$.}
+  \caption{V1: Full-space Recall@10, masked vs.\ verify, at overfetch
+    $m\in\{1,8\}$, SIFT1M with hybrid $L{=}1$.}
   \label{fig:verify}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{fig_xcut3_d768_full.png}
-  \caption{Same measurement on synthetic $D{=}768$: overfetch cannot rescue
-    recall under low coherence.}
+  \caption{V1 on synthetic $D{=}768$: overfetch cannot rescue recall under
+    low coherence.}
   \label{fig:verify-d768}
 \end{figure}
 
@@ -563,22 +576,18 @@ recommend shipping M3.
 
 \subsection{Summary}
 
-Table~\ref{tab:keep} consolidates the keep/skip verdict for every mechanism
-evaluated above, following the argument chain: rescoring doesn't help
-(\S\ref{sec:eval-attr}) $\to$ naive masking breaks navigability
-(\S\ref{sec:eval-m1}) $\to$ a hybrid cutoff fixes navigability but not latency
-(\S\ref{sec:eval-m2}) $\to$ the bottleneck is traversal overhead, not arithmetic
-(\S\ref{sec:eval-kernel}) $\to$ the recall ceiling is a coherence property of the
-data (\S\ref{sec:eval-coherence}) $\to$ verification can buy back recall only
-where coherence allows, at real cost (\S\ref{sec:eval-verify}) $\to$ blending
-adds nothing over the hard cutoff (\S\ref{sec:eval-m3}).
+Table~\ref{tab:keep} consolidates the keep/skip verdict along the argument
+chain of Sections~\ref{sec:eval-attr}--\ref{sec:eval-m3}.
 
 \begin{table}[htbp]
   \centering
   \caption{Keep / demote map for the masked-distance study.}
   \label{tab:keep}
-  \small
-  \begin{tabular}{|l|l|p{4.0cm}|}
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.28\columnwidth}
+                     >{\raggedright\arraybackslash}p{0.18\columnwidth}
+                     >{\raggedright\arraybackslash}p{0.46\columnwidth}@{}}
     \hline
     \textbf{Mechanism} & \textbf{Verdict} & \textbf{Evidence} \\
     \hline
@@ -603,93 +612,79 @@ adds nothing over the hard cutoff (\S\ref{sec:eval-m3}).
 Pinecone~\cite{pinecone2023}, and Qdrant~\cite{qdrant2024} expose ANN with
 filters and quantization but not native per-coordinate decompositions or
 layer-aware masked metrics.
+Unlike those engines, we add in-database attribution and query-time masked
+HNSW scoring inside an existing production graph index.
 
 \paragraph{ANN libraries.} FAISS~\cite{johnson2019faiss} and
 ScaNN~\cite{guo2020scann} optimize large-scale search; explainability and
 dynamic subspace routing remain post-processing concerns external to the
 index.
+Unlike library-level ANN, we instrument traversal and scoring inside a
+serving engine and evaluate end-to-end latency, not only index throughput.
 
 \paragraph{Explainable AI.} SHAP and LIME~\cite{lundberg2017shap,ribeiro2016lime}
-approximate model behavior via sampling or local surrogates. We instead exploit
-additive metric structure for deterministic, zero-variance attributions aligned
-with the engine's own ranking — closer to in-database OLAP
-rollups~\cite{gray1998data} than to sampling-based XAI.
+approximate model behavior via sampling or local surrogates.
+Unlike those surrogate explainers, we exploit additive metric structure for
+deterministic, zero-variance attributions aligned with the engine's own ranking
+— closer to in-database OLAP rollups~\cite{gray1998data} than to sampling-based
+XAI.
 
 \paragraph{Dimension reduction and projected indexes.} Static projections or
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
-an existing full-dimensional HNSW index. A dedicated auxiliary index built per
-focus set would sidestep the navigability problem central to
-Section~\ref{sec:eval-m1} entirely, at the cost of only covering a known,
-registered palette of focus sets; we scoped this out of the current study and
-discuss it as future work in Section~\ref{sec:discussion}.
+an existing full-dimensional HNSW index.
+Unlike building a dedicated auxiliary index per focus set — which would sidestep
+the navigability problem of Section~\ref{sec:eval-m1} but only for a registered
+palette of subspaces — we characterize what query-time masking of an unmodified
+full-space graph can and cannot deliver, and leave projected indexes to future
+work (Section~\ref{sec:discussion}).
 
 %=============================================================================
-\section{Discussion}
+\section{Discussion and Conclusion}
 \label{sec:discussion}
 
-\paragraph{What we recommend shipping.} In-database attribution and the M2
-hybrid cutoff are the two positive systems results of this paper. The gather
-kernel (K1) is worth keeping as an implementation detail regardless of
-traversal strategy. Verify (V1) is useful as an optional correctness/recall-recovery
-mode \emph{when combined with overfetch on coherent data}; it should not be
-marketed as a general recall-recovery mechanism given Section~\ref{sec:eval-verify}'s
-low-coherence failure mode. M3's $\alpha$-blend should not ship — it never
-outperforms $\alpha{=}0$, which is simply M2.
+\paragraph{Shipping verdict.} Keep in-database attribution and M2; keep K1 as
+an implementation detail; ship V1 only with overfetch on coherent data
+(Section~\ref{sec:eval-verify}); do not ship M3 ($\alpha{=}0$ is M2).
 
-\paragraph{Why masked traversal doesn't yield end-to-end speedup.} Even with a
-faster masked-comparison kernel, HNSW still touches full vectors for storage
-layout, graph structure, and — on hybrid coarse layers — full-precision SIMD.
-Section~\ref{sec:eval-kernel}'s isolation experiment shows I/O and candidate
-management dominate wall-clock time; the arithmetic XQdrant's masking saves is
-simply not the bottleneck at the scales tested. This is a mechanism-level
-finding, not an implementation shortcoming of our specific kernels, and we
-believe it generalizes to any HNSW-family engine without a redesigned
-traversal data structure (e.g., a masked-distance-aware graph built with a
-dimension-aware edge structure from the start, rather than an existing
-full-space graph reused at query time).
+\paragraph{Why no e2e speedup.} Section~\ref{sec:eval-kernel} isolates the
+bottleneck to I/O and candidate management, not masked arithmetic. Query-time
+masking of an unmodified full-space HNSW therefore cannot yield wall-clock
+wins without a redesigned traversal structure. A dedicated projected index
+per registered focus set (Section~\ref{sec:related}) is the natural next step.
 
-\paragraph{Auxiliary projected indexes (future work).} As noted in
-Section~\ref{sec:related}, a secondary index built directly in a registered
-focus subspace would have its own valid navigability guarantee and could
-plausibly deliver the end-to-end speedup that query-time masking of an
-existing full-space graph cannot. This is a natural next step but requires an
-index-registration API and additional memory per registered focus set; we
-leave a full implementation and evaluation to future work.
+\paragraph{Limitations.} No dedicated high-$D$ M1 archive (collapse evidenced
+via M2's low-$L$ cells and C1); no visited-set divergence instrumentation;
+some high-$D$/verify panels predate the $T{=}5$ protocol and are treated as
+qualitative coherence support rather than primary latency claims.
 
-\paragraph{Limitations.} We did not build a dedicated high-$D$ archive for M1
-(its collapse at high $D$ is evidenced indirectly via M2's low-$L$ cells and
-the coherence measurements in Section~\ref{sec:eval-coherence}). We did not
-instrument visited-set divergence between masked and full traversal, which
-would further strengthen Section~\ref{sec:eval-kernel}. High-$D$ synthetic
-panels and the verify/overfetch study use the same binaries and corpora as the
-unified-host SIFT/$D{=}768$ attribution runs; where those panels predate the
-$T{=}5$ protocol we treat them as qualitative support for the coherence
-argument rather than as the primary latency claims.
+XQdrant shows exact feature attribution can live in a Rust vector engine with
+a clear latency win, while masked-distance HNSW is a navigability tool rather
+than a latency win: M2 restores recall where M1 collapses, but
+subspace/full-space coherence caps what an unmodified full-space graph can
+recover. The public experiment index (Section~\ref{sec:artifacts}) maps each
+positive and negative claim to a reproducible run.
 
 %=============================================================================
-\section{Conclusion}
-\label{sec:conclusion}
+%% EDBT: required section name "Artifacts"; does NOT count toward the 6-page limit.
+\section{Artifacts}
+\label{sec:artifacts}
 
-XQdrant shows that exact feature attribution can live inside a Rust vector
-engine with negligible quality loss and a clear latency win over client-side
-extraction. For masked-distance HNSW, we report a more nuanced result: a
-hybrid layer cutoff is a genuine \emph{navigability} tool — the only one of
-five traversal-level mechanisms we test that both keeps recall high and
-requires no change to the underlying graph — but it is not yet a latency win,
-and subspace/full-space coherence, not implementation effort, sets a hard
-ceiling on how much recall a masked traversal of an unmodified full-space graph
-can recover. Overfetch-and-verify and $\alpha$-blending clarify the remaining
-design space: the former can recover recall when the data is coherent enough
-to make masked candidates useful, at a real latency cost; the latter is
-strictly dominated by a hard layer cutoff and should not ship. Together with a
-public experiment index, these results give practitioners a concrete,
-evidence-based answer to ``should I mask HNSW traversal by subspace,'' rather
-than a single untested claim in either direction.
-
-\begin{acks}
-We thank the Qdrant open-source community for the engine baseline. (Full
-acknowledgments to be restored in the camera-ready version, after review.)
-\end{acks}
+Source code (XQdrant fork of Qdrant) and the experiment harness are public:
+\begin{itemize}
+  \setlength{\itemsep}{0.15em}
+  \setlength{\parsep}{0pt}
+  \item Engine fork:
+    \url{https://github.com/Moetez-Fradi/XQdrant}
+  \item Experiment index, scripts, and canonical CSVs:
+    \url{https://github.com/Moetez-Fradi/XAI/tree/main/DB_systems}
+\end{itemize}
+The harness repository is a submission stub at review time and will be
+populated with the full runners on acceptance (or earlier via CMT
+supplemental upload if requested). Planned contents: the unified
+orchestration script, per-mechanism runners, plotting entry points for
+M1--M3, K1, C1, and V1, and build/run notes for the reported XQdrant
+binary plus the vanilla Qdrant baseline. Neither repository uses access
+monitoring. A CMT zip upload is optional when these links are provided.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{main}

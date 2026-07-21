@@ -170,7 +170,7 @@ def main() -> int:
                 },
                 xlabel="alpha (0 = focus only, 1 = full distance)",
                 ylabel="Recall@K (subspace GT, mean ± std)",
-                title=f"{prefix}Option 4 blend recall (D={dim}, ratio={args.ratio}, n={args.trials})",
+                title=f"{prefix}M3 blend recall (D={dim}, ratio={args.ratio}, n={args.trials})",
                 stem=f"option4_alpha_recall_d{dim}_layer{layer}",
                 hline=None,
             )

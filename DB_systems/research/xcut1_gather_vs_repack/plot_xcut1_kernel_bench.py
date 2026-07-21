@@ -85,7 +85,7 @@ def main() -> int:
     cr.line_plot(
         d_subs, series,
         xlabel="D_sub (focus dimensions)", ylabel="ns per distance op (lower = better)",
-        title=f"{prefix}Gather vs. repack kernel",
+        title=f"{prefix}K1: Gather vs. repack kernel",
         stem="xcut1_kernel_gather_vs_repack",
     )
     print(f"[xcut1] done -> {run.root}")

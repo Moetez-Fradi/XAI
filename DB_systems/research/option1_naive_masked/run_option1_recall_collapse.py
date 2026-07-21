@@ -146,7 +146,7 @@ def main() -> int:
             },
             xlabel="Subspace ratio (D_sub / D)",
             ylabel="Recall@K vs full-vector GT (mean ± std)",
-            title=f"{prefix}Option 1 recall collapse (D={dim}, n={args.trials})",
+            title=f"{prefix}M1 recall collapse (D={dim}, n={args.trials})",
             stem=f"option1_recall_vs_ratio_d{dim}",
             hline=0.8,
         )

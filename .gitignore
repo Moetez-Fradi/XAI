@@ -1,11 +1,33 @@
+# OS / IDE
 .DS_Store
+**/.DS_Store
 .idea/
 .vscode/
+
+# Secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-experiments/
+
+# Python
 __pycache__/
+**/.venv/
+**/.pytest_cache/
+**/.mplconfig/
+*.pyc
+
+# Local scratch / legacy paths
+experiments/
 exec/
+
+# Stale root PDF copy (canonical build lives in deliverable/)
+/main.pdf
+
+# Rust / engine local state (also ignored inside submodules)
+**/target/
+**/storage/
+
+.DS_Store
+steps_vdbt.md

@@ -20,7 +20,6 @@
 %% original source files, as listed above, are part of the
 %% same distribution. (The sources need not necessarily be
 %% in the same archive or directory.)
-
 %% \CharacterTable
 %%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
 %%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
@@ -37,18 +36,14 @@
 %%   Grave accent  \`     Left brace    \{     Vertical bar  \|
 %%   Right brace   \}     Tilde         \~}
 
-
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{acmart}
-[2026/06/27 v2.19 Typesetting articles for the Association for Computing Machinery]
+[2024/12/28 v2.12 Typesetting articles for the Association for Computing Machinery]
 \def\@classname{acmart}
 \InputIfFileExists{acmart-preload-hook.tex}{%
   \ClassWarning{\@classname}{%
     I am loading acmart-preload-hook.tex. You are fully responsible
     for any problems from now on.}}{}
-\providecommand{\IfDocumentMetadataTF}{\@secondoftwo}
-\providecommand{\IfDocumentMetadataT}{\@gobble}
-\providecommand{\IfDocumentMetadataF}{\@firstofone}
 \RequirePackage{xkeyval}
 \RequirePackage{xstring}
 \RequirePackage{iftex}
@@ -256,10 +251,6 @@
 \else
  \@ACM@journal@bibstripfalse
 \fi
-\let\@startsection@kernel\@startsection
-\let\@xsect@kernel\@xsect
-\let\@sect@kernel\@sect
-\let\@ssect@kernel\@ssect
 \ifx\ACM@fontsize\@empty
   \ifcase\ACM@format@nr
   \relax % manuscript
@@ -422,17 +413,17 @@
   }%
   \addto\captionsfrench{%
       \if@ACM@journal
-        \renewcommand\keywordsname{Mots Cl^^c3^^a9s et Phrases Suppl^^c3^^a9mentaires}%
+        \renewcommand\keywordsname{Mots Clés et Phrases Supplémentaires}%
       \else
-        \renewcommand\keywordsname{Mots cl^^c3^^a9s}%
+        \renewcommand\keywordsname{Mots clés}%
       \fi
       \renewcommand\acksname{Remerciements}%
   }%
   \addto\captionsgerman{%
       \if@ACM@journal
-        \renewcommand\keywordsname{Zus^^c3^^a4tzliche Schlagw^^c3^^b6rter und Phrasen}%
+        \renewcommand\keywordsname{Zusätzliche Schlagwörter und Phrasen}%
       \else
-        \renewcommand\keywordsname{Schlagw^^c3^^b6rter}%
+        \renewcommand\keywordsname{Schlagwörter}%
       \fi
       \renewcommand\acksname{Danksagungen}%
   }%
@@ -475,13 +466,97 @@
     command. Please move it!}\fi
   \ACM@lang@check{translatedabstract}%
   \g@addto@macro\@translatedabstracts{\bgroup#1\egroup}}
-\let\@startsection\@startsection@kernel
+\def\@startsection#1#2#3#4#5#6{%
+  \if@noskipsec \leavevmode \fi
+  \par
+  \@tempskipa #4\relax
+  \@afterindenttrue
+  \ifdim \@tempskipa <\z@
+    \@tempskipa -\@tempskipa \@afterindentfalse
+  \fi
+  \if@nobreak
+    \everypar{}%
+  \else
+    \addpenalty\@secpenalty\addvspace\@tempskipa
+  \fi
+  \@ifstar
+    {\@ssect{#3}{#4}{#5}{#6}}%
+    {\@dblarg{\@sect{#1}{#2}{#3}{#4}{#5}{#6}}}}
 \def\@sect#1#2#3#4#5#6[#7]#8{%
-  \ifnum #2>\c@secnumdepth \else
-    \@tochangmeasure{\csname the#1\endcsname}\fi
-  \@sect@kernel{#1}{#2}{#3}{#4}{#5}{#6}[#7]{#8}}
-\let\@ssect\@ssect@kernel
-\let\@xsect\@xsect@kernel
+  \edef\@toclevel{\ifnum#2=\@m 0\else\number#2\fi}%
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+  \else
+    \refstepcounter{#1}%
+    \protected@edef\@svsec{\@seccntformat{#1}\relax}%
+  \fi
+  \@tempskipa #5\relax
+  \ifdim \@tempskipa>\z@
+    \begingroup
+      #6{%
+        \@hangfrom{\hskip #3\relax\@svsec}%
+          \interlinepenalty \@M #8\@@par}%
+    \endgroup
+    \csname #1mark\endcsname{#7}%
+    \ifnum #2>\c@secnumdepth \else
+        \@tochangmeasure{\csname the#1\endcsname}%
+    \fi
+    \addcontentsline{toc}{#1}{%
+      \ifnum #2>\c@secnumdepth \else
+        \protect\numberline{\csname the#1\endcsname}%
+      \fi
+      #7}%
+  \else
+    \def\@svsechd{%
+      #6{\hskip #3\relax
+      \@svsec #8}%
+      \csname #1mark\endcsname{#7}%
+      \ifnum #2>\c@secnumdepth \else
+        \@tochangmeasure{\csname the#1\endcsname\space}%
+      \fi
+      \addcontentsline{toc}{#1}{%
+        \ifnum #2>\c@secnumdepth \else
+          \protect\numberline{\csname the#1\endcsname}%
+        \fi
+        #7}}%
+  \fi
+  \@xsect{#5}}
+\def\@xsect#1{%
+  \@tempskipa #1\relax
+  \ifdim \@tempskipa>\z@
+    \par \nobreak
+    \vskip \@tempskipa
+    \@afterheading
+  \else
+    \@nobreakfalse
+    \global\@noskipsectrue
+    \everypar{%
+      \if@noskipsec
+        \global\@noskipsecfalse
+       {\setbox\z@\lastbox}%
+        \clubpenalty\@M
+        \begingroup \@svsechd \endgroup
+        \unskip
+        \@tempskipa #1\relax
+        \hskip -\@tempskipa
+      \else
+        \clubpenalty \@clubpenalty
+        \everypar{}%
+      \fi}%
+  \fi
+  \ignorespaces}
+\def\@ssect#1#2#3#4#5{%
+  \@tempskipa #3\relax
+  \ifdim \@tempskipa>\z@
+    \begingroup
+      #4{%
+        \@hangfrom{\hskip #1}%
+          \interlinepenalty \@M #5\@@par}%
+    \endgroup
+  \else
+    \def\@svsechd{#4{\hskip #1\relax #5}}%
+  \fi
+  \@xsect{#3}}
 \def\@seccntformat#1{\csname the#1\endcsname\quad}
 \def\@starttoc#1#2{\begingroup\makeatletter
   \setTrue{#1}%
@@ -783,19 +858,19 @@
     have the newtxmath package installed.  Please upgrade your
     TeX}\@ACM@newfontsfalse}
 \if@ACM@newfonts
+  % Note that the order in which packages are loaded matters,
+  % and the correct order depends on the LaTeX engine used.
+  % See https://github.com/borisveytsman/acmart/issues/402
+  % and https://github.com/borisveytsman/acmart/issues/410
   \ifxetex
-    \RequirePackage{amssymb}
     \RequirePackage{unicode-math}
-    \setmathfont[Scale=MatchUppercase]{LibertinusMath-Regular.otf}
-    \setmathfont{latinmodern-math.otf}[range={cal}]
+    \setmathfont[Scale=MatchUppercase]{libertinusmath-regular.otf}
     \RequirePackage[tt=false]{libertine}
     \setmonofont[StylisticSet=3]{inconsolata}
   \else
     \ifluatex
-      \RequirePackage{amssymb}
       \RequirePackage{unicode-math}
-      \setmathfont[Scale=MatchUppercase]{LibertinusMath-Regular.otf}
-      \setmathfont{latinmodern-math.otf}[range={cal}]
+      \setmathfont[Scale=MatchUppercase]{libertinusmath-regular.otf}
       \RequirePackage[tt=false]{libertine}
       \setmonofont[StylisticSet=3]{inconsolata}
     \else
@@ -812,32 +887,13 @@
 \if@ACM@sigchiamode
   \renewcommand{\familydefault}{\sfdefault}
 \fi
-\RequirePackage{pifont}
 \newif\if@Description@present
 \@Description@presenttrue
 \newif\if@undescribed@images
 \@undescribed@imagesfalse
 \newcommand\Description[2][]{\global\@Description@presenttrue\ignorespaces}
-\IfDocumentMetadataF{%
 \AtEndDocument{\if@undescribed@images
-  \ClassWarningNoLine{\@classname}{Some images may lack
-    descriptions.\MessageBreak
-  ACM is committed to complying with the upcoming US ADA
-  https://accessiblyapp.com/accessibility-compliance/ada/ and European
-  Accessibility Act
-  (EAA) https://accessiblyapp.com/accessibility-compliance/eaa/
-  regulations by actively working to ensure our publications and
-  application services are accessible to individuals with
-  disabilities, adhering to the WCAG guidelines to provide a seamless
-  experience for all users, and regularly reviewing our accessibility
-  practices to maintain compliance with evolving standards. \MessageBreak
-  To this end, we strongly encourage our authors to provide
-  alternative text and captions for images and multimedia content. It
-  is also important to optimize color contrast for the visually
-  impaired. Taking these important steps when creating your papers
-  will ensure that the widest possible audience can ingest your
-  work.}\fi}
-}
+  \ClassWarningNoLine{\@classname}{Some images may lack descriptions}\fi}
 \AtBeginEnvironment{figure}{\@Description@presentfalse
   \let\@vspace\@vspace@orig
   \let\@vspacer\@vspacer@orig}
@@ -909,33 +965,6 @@
   \or % acmcp
   \fi
 \fi
-\ExplSyntaxOn
-\IfDocumentMetadataT{%
-  \RemoveFromHook{begindocument}[latex-lab-testphase-float]
-  \socket_new_plug:nnn{tagsupport/parbox/before}{caption}
-  {
-    \tagpdfparaOn %restart para tagging
-    \tl_if_empty:NTF\@current@float@struct
-    {
-      \tag_struct_begin:n{tag=Caption,firstkid}
-    }
-    {
-      \tag_struct_begin:n{tag=Caption,parent=\@current@float@struct,firstkid}
-    }
-  }
-  \socket_new_plug:nnn{tagsupport/parbox/after}{caption}
-  {
-    \tag_struct_end:
-  }
-  \l@addto@macro\caption@beginex@hook{%
-    \tagpdfparaOff %leavevmode in parbox should not start paragraph structure
-    \AssignSocketPlug{tagsupport/parbox/before}{caption}
-    \AssignSocketPlug{tagsupport/parbox/after}{caption}}
-}
-\ExplSyntaxOff
-\IfDocumentMetadataT{%
-  \tagpdfsetup{table/header-rows={1}}
-}
 \newfloat{sidebar}{}{sbar}
 \floatname{sidebar}{Sidebar}
 \renewenvironment{sidebar}{\Collect@Body\@sidebar}{}
@@ -1049,8 +1078,6 @@
 \@ACM@maketitle@typesetfalse
 \define@choicekey*+{ACM}{acmJournal}[\@journalCode\@journalCode@nr]{%
   ACMJCSS,%
-  ACMJDS,%
-  AILET,%
   CIE,%
   CSUR,%
   DGOV,%
@@ -1079,8 +1106,6 @@
   TAAS,%
   TACCESS,%
   TACO,%
-  TAIS,%
-  TAISAP,%
   TALG,%
   TALLIP,%
   TAP,%
@@ -1132,16 +1157,6 @@
   \def\@journalNameShort{ACM J. Comput. Sustain. Soc.}%
   \def\@permissionCodeOne{2834-5533}%
   \def\@permissionCodeTwo{2834-5533}%
-\or % ACMJDS
-  \def\@journalName{ACM Journal of Data Science}%
-  \def\@journalNameShort{ACM J. Data Sci.}%
-  \def\@permissionCodeOne{3069-3497}%
-  \def\@permissionCodeTwo{3069-3497}%
-\or % AILET
-  \def\@journalName{ACM AI Letters}%
-  \def\@journalNameShort{ACM AI Lett.}%
-  \def\@permissionCodeOne{3068-8590}%
-  \def\@permissionCodeTwo{3068-8590}%
 \or % CIE
   \def\@journalName{ACM Computers in Entertainment}%
   \def\@journalNameShort{ACM Comput. Entertain.}%
@@ -1205,8 +1220,8 @@
   \def\@permissionCodeOne{1936-1955}%
   \def\@permissionCodeTwo{1936-1963}%
 \or % JDS
-  \def\@journalName{ACM Journal of Data Science}%
-  \def\@journalNameShort{ACM J. Data Sci.}%
+  \def\@journalName{ACM/IMS Journal of Data Science}%
+  \def\@journalNameShort{ACM/IMS J. Data Sci.}%
   \def\@permissionCodeOne{2831-3194}%
   \def\@permissionCodeTwo{2831-3194}%
 \or % JEA
@@ -1293,16 +1308,6 @@
   \def\@journalNameShort{ACM Trans. Arch. Code Optim.}%
   \def\@permissionCodeOne{1544-3566}%
   \def\@permissionCodeTwo{1544-3973}%
-\or % TAIS
-  \def\@journalName{ACM Transactions on AI for Science}%
-  \def\@journalNameShort{ACM Trans. AI Sci.}%
-  \def\@permissionCodeOne{3066-4438}%
-  \def\@permissionCodeTwo{3066-4438}%
-\or % TAISAP
-  \def\@journalName{ACM Transactions on AI Security and Privacy}%
-  \def\@journalNameShort{ACM Trans. AI Secur. Priv.}%
-  \def\@permissionCodeOne{3068-3564}%
-  \def\@permissionCodeTwo{3068-3564}%
 \or % TALG
   \def\@journalName{ACM Transactions on Algorithms}%
   \def\@journalNameShort{ACM Trans. Algor.}%
@@ -1324,8 +1329,8 @@
   \def\@permissionCodeOne{2378-962X}%
   \def\@permissionCodeTwo{2378-9638}%
 \or % TDS
-  \def\@journalName{ACM Transactions on Data Science}%
-  \def\@journalNameShort{ACM Trans. Data Sci.}%
+  \def\@journalName{ACM/IMS Transactions on Data Science}%
+  \def\@journalNameShort{ACM/IMS Trans. Data Sci.}%
   \def\@permissionCodeOne{2577-3224}%
 \or % TEAC
   \def\@journalName{ACM Transactions on Economics and Computation}%
@@ -1644,14 +1649,13 @@
     \g@addto@macro\addresses{\email{#1}{#2}}%
   \fi}
 \def\orcid#1{\unskip\ignorespaces%
-  \protected\def\orcidsite{https://orcid.org/}%
   \IfBeginWith{#1}{http}{%
     \expandafter\gdef\csname
         typeset@author\the\num@authors\endcsname##1{%
           \href{#1}{##1}}}{%
     \expandafter\gdef\csname
         typeset@author\the\num@authors\endcsname##1{%
-          \href{\orcidsite#1}{##1}}}}
+          \href{https://orcid.org/#1}{##1}}}}
 \def\authorsaddresses#1{\def\@authorsaddresses{#1}}
 \authorsaddresses{\@mkauthorsaddresses}
 \newcommand\@mktranslatedkeywords[2]{\bgroup
@@ -1684,12 +1688,6 @@
     \g@addto@macro\@authornotes{%
       \stepcounter{footnote}\footnotetext{#1}}%
   \fi}
-\newcommand\correspondingauthor{%
-  \if@ACM@anonymous\else
-  \g@addto@macro\addresses{\@correspondingauthormark}%
-  \fi}
-\def\@correspondingauthormark{\g@addto@macro\@currentauthors{%
-    \advance\hfuzz by 5pt\relax\textsuperscript{\ding{41}}\relax}}
 \newcommand\authornotemark[1][\relax]{%
   \if@ACM@anonymous\else
     \ifx#1\relax\relax\relax
@@ -2075,7 +2073,7 @@
    affiliate of the national government of Canada. As such, the Crown
    in Right of Canada retains an equal interest in the
    copyright. Reprints must include clear attribution to ACM and the
-   author^^e2^^80^^99s government agency affiliation. Permission to make digital
+   author’s government agency affiliation. Permission to make digital
    or hard copies for personal or classroom use is granted. Copies
    must bear this notice and the full citation on the first
    page. Copyrights for components of this work owned by others than
@@ -2557,7 +2555,8 @@
 \def\@ACM@addtoaddress#1{%
   \ifvmode\else
     \if@ACM@affiliation@obeypunctuation\else
-    \unskip,~%
+    \setbox\@ACM@commabox=\hbox{, }%
+    \unskip\cleaders\copy\@ACM@commabox\hskip\wd\@ACM@commabox
   \fi\fi
   #1}
 \def\streetaddress#1{\ClassWarning{\@classname}{ACM no longer collects
@@ -2756,10 +2755,10 @@
   \gdef\and{}}%
   \def\email##1##2{\ifx\@currentaffiliation\@empty
     \gdef\@currentaffiliation{\bgroup
-      \mathchardef\UrlBreakPenalty=10000\href{mailto:##2}{##2}\egroup}%
+      \mathchardef\UrlBreakPenalty=10000\nolinkurl{##2}\egroup}%
   \else
     \g@addto@macro\@currentaffiliation{\par\bgroup
-      \mathchardef\UrlBreakPenalty=10000\href{mailto:##2}{##2}\egroup}%
+      \mathchardef\UrlBreakPenalty=10000\nolinkurl{##2}\egroup}%
   \fi}%
   \def\affiliation##1##2{\ifx\@currentaffiliation\@empty
     \gdef\@currentaffiliation{%
@@ -2802,9 +2801,9 @@
   \fi
   \gdef\and{}}%
   \def\email##1##2{\ifx\@currentaffiliation\@empty
-    \gdef\@currentaffiliation{\href{mailto:##2}{##2}}%
+    \gdef\@currentaffiliation{\nolinkurl{##2}}%
   \else
-    \g@addto@macro\@currentaffiliation{\par\href{mailto:##2}{##2}}%
+    \g@addto@macro\@currentaffiliation{\par\nolinkurl{##2}}%
   \fi}%
   \def\affiliation##1##2{\ifx\@currentaffiliation\@empty
     \gdef\@currentaffiliation{%
@@ -2842,7 +2841,7 @@
   \def\country##1{\unskip, ##1}%
   \def\and{\unskip; \gdef\@ACM@institution@separator{, }}%
   \def\@author##1{##1}%
-  \def\email##1##2{\unskip, \href{mailto:##2}{##2}}%
+  \def\email##1##2{\unskip, \nolinkurl{##2}}%
   \addresses
   \egroup}
 \AtEndDocument{\if@ACM@nonacm\else\if@ACM@journal
@@ -2851,10 +2850,8 @@
     addresses are mandatory for ACM journals}%
   \fi\fi\fi}
 \def\@setaddresses{}
-\def\@authornotemark{\g@addto@macro\@currentauthors{%
-    \advance\hfuzz by 5pt\relax\footnotemark\relax}}
-\def\@@authornotemark#1{\g@addto@macro\@currentauthors{%
-    \advance\hfuzz by 5pt\relax\footnotemark[#1]}}
+\def\@authornotemark{\g@addto@macro\@currentauthors{\footnotemark\relax}}
+\def\@@authornotemark#1{\g@addto@macro\@currentauthors{\footnotemark[#1]}}
 \def\@mkteasers{%
   \ifx\@teaserfigures\@empty\else
     \def\@teaser##1{\par\bigskip\bgroup
@@ -3587,26 +3584,6 @@
 \AtEndDocument{\ifx\baselinestretch\ACM@origbaselinestretch\else
   \ClassError{\@classname}{An attempt to redefine
     \string\baselinestretch\space detected.  Please do not do this for
-    ACM submissions!}\fi}
-\let\ACM@origsection\section
-\AtEndDocument{\ifx\section\ACM@origsection\else
-  \ClassError{\@classname}{An attempt to redefine
-    \string\section\space detected.  Please do not do this for
-    ACM submissions!}\fi}
-\let\ACM@origsubsection\subsection
-\AtEndDocument{\ifx\subsection\ACM@origsubsection\else
-  \ClassError{\@classname}{An attempt to redefine
-    \string\subsection\space detected.  Please do not do this for
-    ACM submissions!}\fi}
-\let\ACM@origsubsubsection\subsubsection
-\AtEndDocument{\ifx\subsubsection\ACM@origsubsubsection\else
-  \ClassError{\@classname}{An attempt to redefine
-    \string\subsubsection\space detected.  Please do not do this for
-    ACM submissions!}\fi}
-\let\ACM@origparagraph\paragraph
-\AtEndDocument{\ifx\paragraph\ACM@origparagraph\else
-  \ClassError{\@classname}{An attempt to redefine
-    \string\paragraph\space detected.  Please do not do this for
     ACM submissions!}\fi}
 \normalsize\normalfont\frenchspacing
 \endinput
