@@ -1,5 +1,6 @@
 .venv/
 .DS_Store
+.paper_bench_storage/
 data/
 .sift_fixture/
 .idea/

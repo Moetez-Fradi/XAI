@@ -27,6 +27,7 @@ QDRANT_URL="${QDRANT_URL:-http://127.0.0.1:6333}"
 XQDRANT_URL="${XQDRANT_URL:-${QDRANT_URL}}"
 BENCH_DIMENSIONS="${BENCH_DIMENSIONS:-768 1536}"
 BENCH_QUERIES="${BENCH_QUERIES:-500}"
+BENCH_TRIALS="${BENCH_TRIALS:-5}"        # independent query-sample seeds → mean±std
 VENV_DIR="${VENV_DIR:-${SCRIPT_DIR}/.venv}"
 BENCH_CPU_CORES="${BENCH_CPU_CORES:-}"   # e.g. "0,1,2,3" or "0-3"
 VALIDATE_HTTP="${VALIDATE_HTTP:-0}"      # set to 1 to run endpoint probes before benchmark
@@ -175,7 +176,7 @@ main() {
     local exec_prefix
     exec_prefix="$(build_exec_prefix)"
 
-    export BENCH_MODE QDRANT_URL XQDRANT_URL BENCH_DIMENSIONS BENCH_QUERIES
+    export BENCH_MODE QDRANT_URL XQDRANT_URL BENCH_DIMENSIONS BENCH_QUERIES BENCH_TRIALS
 
     local -a bench_cmd=(
         python3 "${SCRIPT_DIR}/bench_suite.py"
@@ -184,6 +185,7 @@ main() {
         --xqdrant-url "${XQDRANT_URL}"
         --dimensions ${BENCH_DIMENSIONS}
         --queries "${BENCH_QUERIES}"
+        --trials "${BENCH_TRIALS}"
     )
     if ((${#extra_args[@]} > 0)); then
         bench_cmd+=("${extra_args[@]}")

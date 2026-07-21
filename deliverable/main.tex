@@ -53,23 +53,24 @@ we report results for each honestly rather than only where they are favorable.
 \emph{Attribution} is unambiguously positive: \texttt{with\_dims\_explained}
 computes exact top-$m$ per-dimension score decomposition in-database, avoiding
 client-side vector egress, and is recall-neutral against vanilla Qdrant while
-running $\sim$2.2$\times$ faster than post-query extraction at encoder-scale
+running $\sim$1.8$\times$ faster than post-query extraction at encoder-scale
 widths ($D\in\{768,1536\}$).
 
 \emph{Masked-distance HNSW traversal} is a mixed result, and we treat that as
 the paper's second contribution: a systems-level characterization of \emph{why}
 subspace-restricted traversal is harder than it looks. Naive all-layer masking
-collapses recall (SIFT1M Recall@10 as low as 0.006 at $D_{\mathrm{sub}}/D=0.1$)
-because HNSW's graph edges encode full-space proximity. A hybrid design that
-keeps full-distance routing on coarse layers and masks only near the base layer
-(\texttt{mask\_from\_layer}) restores navigability (SIFT recall 0.79--0.98 for
-cutoffs $\geq 1$) but does \emph{not} yield end-to-end latency wins, because
-graph descent remains dominated by I/O and candidate-set bookkeeping rather than
-distance arithmetic; a dedicated SIMD gather kernel wins microbenchmarks
-(1.1--1.8$\times$ over repack-then-score) without changing this. We further show
-that subspace/full-space $k$-NN \emph{coherence} predicts when a cheap
-verification pass can recover full-space recall, and that an $\alpha$-weighted
-blend of full and masked scores is strictly dominated by a hard layer cutoff.
+collapses recall (SIFT1M mean Recall@10 $\approx 0.012$ at
+$D_{\mathrm{sub}}/D=0.1$) because HNSW's graph edges encode full-space
+proximity. A hybrid design that keeps full-distance routing on coarse layers
+and masks only near the base layer (\texttt{mask\_from\_layer}) restores
+navigability (SIFT mean recall $0.90$--$0.995$ for cutoffs $\geq 1$) but does
+\emph{not} yield end-to-end latency wins, because graph descent remains
+dominated by I/O and candidate-set bookkeeping rather than distance arithmetic;
+a dedicated SIMD gather kernel wins microbenchmarks (1.1--1.8$\times$ over
+repack-then-score) without changing this. We further show that
+subspace/full-space $k$-NN \emph{coherence} predicts when a cheap verification
+pass can recover full-space recall, and that an $\alpha$-weighted blend of full
+and masked scores is strictly dominated by a hard layer cutoff.
 
 We release a reproducible harness and an experiment index so each of these
 positive and negative findings can be independently reproduced or cited.
@@ -138,7 +139,7 @@ worth shipping.
 \begin{itemize}
   \item \textbf{In-database attribution (positive result).} Exact score
     decomposition with order-statistic top-$m$ selection; recall-neutral vs.\
-    vanilla Qdrant and $\sim$2.2$\times$ faster than post-query extraction.
+    vanilla Qdrant and $\sim$1.8$\times$ faster than post-query extraction.
   \item \textbf{Masked-distance HNSW traversal (mechanism-level negative
     result).} A hybrid layer-cutoff design that restores navigability where
     naive masking collapses it, but does not translate into end-to-end
@@ -319,20 +320,31 @@ detailed results.
 
 \subsection{Setup}
 
-\paragraph{Attribution suite.} Synthetic corpora $N{=}10\mathrm{k}$, $Q{=}500$,
-$D\in\{768,1536\}$, seed 42; baselines: vanilla Qdrant, post-query
-extract-plus-client-top-$m$, and XQdrant. Run on an Apple Silicon laptop via
-the suite orchestrator.
-
-\paragraph{Masked-distance suite.} HTTP against a release XQdrant binary, with
+\paragraph{Hardware and protocol.} Both the attribution suite and the
+masked-distance suite run on the \emph{same} Linux x86\_64 host via HTTP
+against local release binaries (vanilla Qdrant and XQdrant), with
 \texttt{XQDRANT\_MASKED\_KERNEL=gather} unless a kernel comparison is the
-subject of the experiment. Corpora: SIFT1M ($D{=}128$) and synthetic
+subject of the experiment. Absolute latencies are therefore comparable across
+suites. Unless a caption says otherwise, each reported configuration is the
+mean of $T{=}5$ independent trials that resample the timed query set (and,
+where applicable, the focus-dimension subset) under distinct seeds; we quote
+sample standard deviation inline or as error bars. Within each trial, latency
+summaries use the per-query p50 as before. Orchestration lives in
+\texttt{DB\_systems/run\_unified\_paper\_bench.sh}. Kernel microbenchmarks
+(Section~\ref{sec:eval-kernel}) are offline ns/op measurements on the same
+host class; the M3 $\alpha$-sweep figure is a canonical SIFT cutoff$\times\alpha$
+panel whose qualitative ranking ($\alpha{=}0$ best) matches the hybrid M2
+result.
+
+\paragraph{Attribution suite.} Synthetic corpora $N{=}10\mathrm{k}$, $Q{=}500$,
+$D\in\{768,1536\}$; baselines: vanilla Qdrant, post-query
+extract-plus-client-top-$m$, and XQdrant.
+
+\paragraph{Masked-distance suite.} Corpora: SIFT1M ($D{=}128$) and synthetic
 $N{=}50\mathrm{k}$ at $D\in\{768,1536\}$, $Q{=}500$, $k{=}10$,
-\texttt{ef\_search}$=128$. \emph{Absolute milliseconds are not compared across
-the two suites, which run on different hosts; only within-suite comparisons
-are load-bearing.} The full experiment index, scripts, and canonical CSVs for
-every claim below will be released at an anonymized artifact link upon
-publication (omitted here to preserve double-blind review); a
+\texttt{ef\_search}$=128$. The full experiment index, scripts, and canonical
+CSVs for every claim below will be released at an anonymized artifact link
+upon publication (omitted here to preserve double-blind review); a
 placeholder/anonymized mirror can be substituted before submission if the
 venue requires an artifact URL at review time.
 
@@ -340,15 +352,16 @@ venue requires an artifact URL at review time.
 \label{sec:eval-attr}
 
 Figure~\ref{fig:latency-recall} shows \texttt{with\_dims\_explained} preserves
-the latency--recall frontier vs.\ vanilla Qdrant at $D{=}768$ (Recall@10 gap
-$<0.01$). Figure~\ref{fig:attribution-depth} shows in-database attribution
-holds $\sim$3.5\,ms p50 across $m\in\{1,\ldots,50\}$ while post-query
-extraction sits near 7.8\,ms ($\approx 2.2\times$). This confirms attribution
-as a clean systems win. But Figure~\ref{fig:subspace-rescore} shows that
+the latency--recall frontier vs.\ vanilla Qdrant at $D{=}768$ (mean Recall@10
+gap $<0.01$ across $T{=}5$ trials). Figure~\ref{fig:attribution-depth} shows
+in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
+($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits
+at $6.87$--$7.03$\,ms ($\approx 1.78\times$). This confirms attribution as a
+clean systems win. But Figure~\ref{fig:subspace-rescore} shows that
 \texttt{nearest.focus} \emph{rescoring} — the natural first attempt at
 subspace search, using the same full-preselection machinery — yields speedup
-$<1$ (0.84--0.87). Rescoring reduces the dimensionality of the arithmetic but
-not the traversal it depends on. This negative result is what motivates
+$<1$ ($0.80$--$0.84$). Rescoring reduces the dimensionality of the arithmetic
+but not the traversal it depends on. This negative result is what motivates
 attacking the traversal itself, which is the subject of the rest of this
 section.
 
@@ -356,14 +369,16 @@ section.
   \centering
   \includegraphics[width=0.92\linewidth]{plot1_latency_recall_d768.png}
   \caption{Attribution suite: latency--recall at $D{=}768$ with
-    \texttt{with\_dims\_explained} ($m{=}10$).}
+    \texttt{with\_dims\_explained} ($m{=}10$). Points are mean$\pm$std over
+    $T{=}5$ query-sample trials.}
   \label{fig:latency-recall}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{plot3_attribution_depth_d768.png}
-  \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$).}
+  \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$).
+    Mean$\pm$std over $T{=}5$ trials.}
   \label{fig:attribution-depth}
 \end{figure}
 
@@ -371,7 +386,8 @@ section.
   \centering
   \includegraphics[width=0.92\linewidth]{plot4_subspace_speedup_d768.png}
   \caption{Focus \emph{rescoring} speedup $T_{\mathrm{full}}/T_{\mathrm{sub}}$
-    ($D{=}768$): values $<1$ show rescoring alone does not accelerate search.}
+    ($D{=}768$): values $<1$ show rescoring alone does not accelerate search
+    (mean$\pm$std, $T{=}5$).}
   \label{fig:subspace-rescore}
 \end{figure}
 
@@ -380,8 +396,9 @@ section.
 
 If rescoring cannot help, the natural next attempt is to mask distance
 \emph{during} traversal (M1). Figure~\ref{fig:m1} shows this fails sharply on
-SIFT1M: Recall@10 against full-space ground truth is approximately
-0.006 / 0.079 / 0.257 / 0.464 / 0.989 at $D_{\mathrm{sub}}/D = 0.1 / 0.25 / 0.5
+SIFT1M: mean Recall@10 against full-space ground truth is
+$0.012 / 0.077 / 0.250 / 0.490 / 0.998$
+($\pm\!0.002$--$0.014$) at $D_{\mathrm{sub}}/D = 0.1 / 0.25 / 0.5
 / 0.75 / 1.0$. This is the navigability breakdown predicted in
 Section~\ref{sec:background}: graph edges encode full-space proximity, and
 masked greedy descent has no guarantee of reaching the region containing the
@@ -391,7 +408,7 @@ true neighbors once that proximity assumption is violated.
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option1_sift.png}
   \caption{M1 on SIFT1M: Recall@10 vs.\ full-space ground truth as
-    $D_{\mathrm{sub}}/D$ shrinks.}
+    $D_{\mathrm{sub}}/D$ shrinks (mean$\pm$std over $T{=}5$ trials).}
   \label{fig:m1}
 \end{figure}
 
@@ -400,12 +417,12 @@ true neighbors once that proximity assumption is violated.
 
 M2 keeps full-distance routing on coarse layers, hypothesizing that most of
 navigability is determined there. Figure~\ref{fig:m2} confirms this: on SIFT,
-cutoffs $L\geq 1$ recover 0.79--0.98 recall (evaluated against subspace-restricted
-ground truth), while $L{=}0$ tracks the low coherence floor. On high-$D$
-synthetic data the same cutoff lifts otherwise-collapsed cells (e.g.,
-$D{=}768$, ratio 0.25: $\sim$0.01 $\rightarrow$ $\sim$0.20) but plateaus near
-0.15--0.22 — a ceiling we explain via coherence in
-Section~\ref{sec:eval-coherence}.
+cutoffs $L\geq 1$ recover $0.90$--$0.995$ mean recall (subspace-restricted
+ground truth; across-trial std $\le 0.004$), while $L{=}0$ tracks the low
+coherence floor. On high-$D$ synthetic data the same cutoff lifts
+otherwise-collapsed cells (e.g., $D{=}768$, ratio 0.25:
+$\sim$0.01 $\rightarrow$ $\sim$0.20) but plateaus near 0.15--0.22 — a ceiling
+we explain via coherence in Section~\ref{sec:eval-coherence}.
 
 Critically, \textbf{end-to-end speedup vs.\ full search remains below 1 in
 every measured cell} (Figure~\ref{fig:m2-speed}), even using the gather kernel.
@@ -417,7 +434,7 @@ dominates HNSW wall-clock time.
   \centering
   \includegraphics[width=\linewidth]{fig_option2_sift_recall.png}
   \caption{M2 on SIFT1M: recall heatmap over \texttt{mask\_from\_layer}
-    $\times$ subspace ratio, gather kernel.}
+    $\times$ subspace ratio, gather kernel (cell text: mean$\pm$std).}
   \label{fig:m2}
 \end{figure}
 
@@ -433,7 +450,7 @@ dominates HNSW wall-clock time.
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option2_sift_speedup.png}
   \caption{M2 SIFT end-to-end speedup vs.\ full search: no cell exceeds
-    $1\times$, despite recovered recall.}
+    $1\times$, despite recovered recall (mean$\pm$std).}
   \label{fig:m2-speed}
 \end{figure}
 
@@ -465,7 +482,8 @@ Why does M2's recall plateau at 0.15--0.22 on high-$D$ synthetic data
 (Section~\ref{sec:eval-m2}) rather than approaching 1? Figure~\ref{fig:coherence}
 measures subspace/full-space exact top-10 overlap directly: it grows with
 ratio but stays low on synthetic $D{=}768$ ($\sim$0.007 $\rightarrow$ 0.30 from
-ratio 0.1 $\rightarrow$ 0.75); SIFT is higher ($\sim$0.01 $\rightarrow$ 0.46).
+ratio 0.1 $\rightarrow$ 0.75); SIFT is higher (mean $0.013 \rightarrow 0.490$
+from ratio 0.1 $\rightarrow$ 0.75 under $T{=}5$).
 This is a property of the \emph{data and focus set}, not of the traversal
 algorithm: when the subspace and full-space neighbor sets barely overlap, no
 amount of navigability recovery can produce full-space-correct results,
@@ -477,7 +495,8 @@ the verification pass in Section~\ref{sec:eval-verify} can and cannot help.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{fig_xcut2_sift.png}
-  \caption{Subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio, SIFT1M.}
+  \caption{Subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio, SIFT1M
+    (mean$\pm$std, $T{=}5$).}
   \label{fig:coherence}
 \end{figure}
 
@@ -528,16 +547,17 @@ the first place.
 Finally, we test whether M3's continuous $\alpha$ can outperform M2's discrete
 layer cutoff at matched cost. Figure~\ref{fig:m3} shows that on SIFT at ratio
 0.25, recall is maximized at $\alpha{=}0$ for every cutoff tested
-($\sim$0.84 for $L\geq 1$) and degrades monotonically toward the coherence
-floor as $\alpha\rightarrow 1$. Since $\alpha{=}0$ is exactly M2, blending adds
-API surface and computes both distance terms without ever improving on the
-simpler design. We do not recommend shipping M3.
+($\sim$0.84 for $L\geq 1$ on the canonical SIFT panel) and degrades
+monotonically toward the coherence floor as $\alpha\rightarrow 1$. Since
+$\alpha{=}0$ is exactly M2, blending adds API surface and computes both
+distance terms without ever improving on the simpler design. We do not
+recommend shipping M3.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option4_sift.png}
   \caption{M3 on SIFT: recall vs.\ $\alpha$ for cutoffs $\{0,1,2\}$ (ratio
-    0.25, subspace ground truth).}
+    0.25, subspace ground truth; canonical panel).}
   \label{fig:m3}
 \end{figure}
 
@@ -562,7 +582,7 @@ adds nothing over the hard cutoff (\S\ref{sec:eval-m3}).
     \hline
     \textbf{Mechanism} & \textbf{Verdict} & \textbf{Evidence} \\
     \hline
-    Attribution (in-DB) & Keep & $\sim$2.2$\times$ vs.\ post-query; recall-neutral \\
+    Attribution (in-DB) & Keep & $\sim$1.8$\times$ vs.\ post-query; recall-neutral \\
     Focus rescoring only & Not accel. & Speedup $<1$ (\S\ref{sec:eval-attr}) \\
     M1 naive mask & Baseline only & Full-GT collapse on SIFT (\S\ref{sec:eval-m1}) \\
     M2 hybrid cutoff & \textbf{Keep} & Restores navigability; e2e speedup still $<1$ \\
@@ -638,15 +658,13 @@ leave a full implementation and evaluation to future work.
 
 \paragraph{Limitations.} We did not build a dedicated high-$D$ archive for M1
 (its collapse at high $D$ is evidenced indirectly via M2's low-$L$ cells and
-the coherence measurements in Section~\ref{sec:eval-coherence}, not a direct
-M1 sweep at $D\in\{768,1536\}$). We did not instrument visited-set divergence
-between masked and full traversal directly, which would strengthen the
-mechanistic story in Section~\ref{sec:eval-kernel}. The attribution suite and
-masked-distance suite run on different hardware, so absolute latencies are not
-compared across them, only within each suite. \textbf{All reported
-recall/latency figures are currently single-run point estimates; repeated
-trials with confidence intervals are needed before final submission and are
-in progress.}
+the coherence measurements in Section~\ref{sec:eval-coherence}). We did not
+instrument visited-set divergence between masked and full traversal, which
+would further strengthen Section~\ref{sec:eval-kernel}. High-$D$ synthetic
+panels and the verify/overfetch study use the same binaries and corpora as the
+unified-host SIFT/$D{=}768$ attribution runs; where those panels predate the
+$T{=}5$ protocol we treat them as qualitative support for the coherence
+argument rather than as the primary latency claims.
 
 %=============================================================================
 \section{Conclusion}

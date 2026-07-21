@@ -7,26 +7,21 @@ distance when ``L < mask_from_layer``, else full (``0`` = no masking / plain nea
 ``>= top_layer+1`` = all layers masked / Option 1). Omit with ``masked=true`` for legacy
 full-mask behaviour.
 
-This script does a 2D sweep ``mask_from_layer x D_sub/D`` and emits recall + latency heatmaps.
-It is the most likely paper-worthy result (new Figure 4 candidate).
-
-Metric folder: experiments/<ts>__option2_hybrid_layer_cutoff__recall_latency_layer_heatmap/
-
-Any config whose XQdrant does not yet understand ``mask_from_layer`` is recorded as
-unsupported (NaN cell) instead of crashing the sweep.
+This script does a 2D sweep ``mask_from_layer x D_sub/D`` and emits recall + latency
+heatmaps with mean±std across ``--trials`` independent query-sample seeds.
 
 Examples
 --------
-SIFT1M (D=128, already run):
+SIFT1M (D=128):
     python run_option2_layer_sweep.py --mode http \\
-        --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --no-provision --queries 500
+        --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --no-provision \\
+        --queries 500 --trials 5
 
-High-D synthetic re-run (D=768 and 1536 — tests whether speedup appears when FLOPs dominate):
+High-D synthetic:
     python run_option2_layer_sweep.py --mode http \\
         --xqdrant-url http://127.0.0.1:6333 \\
         --dataset synthetic --dimensions 768 1536 \\
-        --num-vectors 50000 --queries 500 \\
-        --experiment-id option2_highD_d768_1536_n50k_q500_v1
+        --num-vectors 50000 --queries 500 --trials 5
 """
 
 from __future__ import annotations
@@ -44,10 +39,7 @@ from bench_common import DEFAULT_EF_SEARCH, LatencyStats, TOP_K  # noqa: E402
 STEP_ID = "option2_hybrid_layer_cutoff"
 METRIC = "recall_latency_layer_heatmap"
 DEFAULT_RATIOS = [0.25, 0.5, 0.75]
-DEFAULT_LAYERS = [0, 1, 2, 3]  # mask_from_layer values (0 = no masking)
-# High-D defaults: SIFT already covered D=128; the open question is whether
-# masked/hybrid becomes faster than full search once D is large enough that
-# FLOP savings beat gather/repack overhead.
+DEFAULT_LAYERS = [0, 1, 2, 3]
 DEFAULT_DIMENSIONS = [768, 1536]
 
 
@@ -69,14 +61,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--experiment-id", default=None,
                    help="Stable experiment folder name (default: auto timestamped)")
     cr.add_dataset_args(p)
+    cr.add_trials_arg(p)
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     xqdrant_url = args.xqdrant_url or args.qdrant_url
+    if args.trials < 1:
+        print("ERROR: --trials must be >= 1", file=sys.stderr)
+        return 2
 
-    # Resolve actual dimensions after dataset selection (sift1m forces D=128).
     datasets = list(cr.iter_datasets(args))
     actual_dims = [d.dimension for d in datasets]
 
@@ -91,16 +86,17 @@ def main() -> int:
             "dataset": args.dataset,
             "num_vectors": args.num_vectors or (datasets[0].num_vectors if datasets else None),
             "requested_dimensions": list(args.dimensions),
+            "trials": args.trials,
         },
         run_id=args.experiment_id,
     )
     print(f"[option2] experiment: {run.root}")
     print(f"[option2] dataset={args.dataset} dims={actual_dims} "
-          f"N={datasets[0].num_vectors if datasets else '?'} Q={args.queries}")
+          f"N={datasets[0].num_vectors if datasets else '?'} Q={args.queries} "
+          f"trials={args.trials}")
 
     for dataset in datasets:
         dim = dataset.dimension
-        queries = dataset.queries[: min(args.queries, dataset.num_queries)]
 
         client = None
         if args.mode == "http":
@@ -110,81 +106,116 @@ def main() -> int:
             if not args.no_provision:
                 print(f"  Waiting for index build (D={dim}, N={dataset.num_vectors})...")
                 client.wait_for_indexing(expected_points=dataset.num_vectors)
-            client.warmup(queries, min(200, len(queries)))
+            warm_q, _ = cr.select_queries(dataset, min(200, args.queries), seed=cr.RANDOM_SEED)
+            client.warmup(warm_q, len(warm_q))
 
-        # full-vector baseline p50 for speedup normalization
-        base_lat = LatencyStats()
-        for q in queries:
-            if args.mode == "http":
-                out = client.query(cr.focus_body(q, args.k, args.ef_search))
-                if out.status == "ok":
-                    base_lat.record(out.latency_ns)
-            else:
-                base_lat.record(1_000_000)
-        full_p50 = base_lat.percentiles_ms()["p50"] or 1.0
+        trial_rows: list[dict] = []
+        for trial in range(args.trials):
+            seed = cr.trial_seed(trial)
+            queries, _ = cr.select_queries(dataset, args.queries, seed=seed)
 
-        recall_mat = np.full((len(args.layers), len(args.ratios)), np.nan)
-        speed_mat = np.full((len(args.layers), len(args.ratios)), np.nan)
-        rows: list[dict] = []
+            # full-vector baseline p50 for speedup normalization (per trial)
+            base_lat = LatencyStats()
+            for q in queries:
+                if args.mode == "http":
+                    out = client.query(cr.focus_body(q, args.k, args.ef_search))
+                    if out.status == "ok":
+                        base_lat.record(out.latency_ns)
+                else:
+                    base_lat.record(1_000_000)
+            full_p50 = base_lat.percentiles_ms()["p50"] or 1.0
 
-        for li, layer in enumerate(args.layers):
-            for ri, ratio in enumerate(args.ratios):
-                dims = cr.subspace_indices(dim, ratio)
-                subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
-                lat = LatencyStats()
-                recalls: list[float] = []
-                unsupported = 0
+            for layer in args.layers:
+                for ratio in args.ratios:
+                    dims = cr.subspace_indices(dim, ratio, seed=seed)
+                    subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
+                    lat = LatencyStats()
+                    recalls: list[float] = []
+                    unsupported = 0
 
-                for q in queries:
-                    gt_ids, _ = subspace_gt.top_k(q, args.k)
-                    if args.mode == "http":
-                        body = cr.focus_body(q, args.k, args.ef_search, dims,
-                                             masked=True, mask_from_layer=layer)
-                        out = client.query(body)
-                        if out.status != "ok":
-                            unsupported += 1
-                            continue
-                        lat.record(out.latency_ns)
-                        recalls.append(cr.recall_at_k(out.result.ids, gt_ids, args.k))
-                    else:
-                        res, ns, _ = cr.simulated_masked(q, dataset, args.k, dims,
-                                                         mask_from_layer=layer,
-                                                         max_layer=max(args.layers) or 1)
-                        lat.record(ns)
-                        recalls.append(cr.recall_at_k(res.ids, gt_ids, args.k))
+                    for q in queries:
+                        gt_ids, _ = subspace_gt.top_k(q, args.k)
+                        if args.mode == "http":
+                            body = cr.focus_body(
+                                q, args.k, args.ef_search, dims,
+                                masked=True, mask_from_layer=layer,
+                            )
+                            out = client.query(body)
+                            if out.status != "ok":
+                                unsupported += 1
+                                continue
+                            lat.record(out.latency_ns)
+                            recalls.append(cr.recall_at_k(out.result.ids, gt_ids, args.k))
+                        else:
+                            res, ns, _ = cr.simulated_masked(
+                                q, dataset, args.k, dims,
+                                mask_from_layer=layer,
+                                max_layer=max(args.layers) or 1,
+                            )
+                            lat.record(ns)
+                            recalls.append(cr.recall_at_k(res.ids, gt_ids, args.k))
 
-                p50 = lat.percentiles_ms()["p50"]
-                recall = float(np.mean(recalls)) if recalls else float("nan")
-                speedup = (full_p50 / p50) if p50 > 0 else float("nan")
-                recall_mat[li, ri] = recall
-                speed_mat[li, ri] = speedup
-                rows.append({
-                    "dimension": dim, "mask_from_layer": layer, "subspace_ratio": ratio,
-                    "subspace_dims": len(dims), "ef_search": args.ef_search, "k": args.k,
-                    "recall_at_k": recall, "p50_ms": p50, "full_p50_ms": full_p50,
-                    "speedup_vs_full": speedup, "unsupported_queries": unsupported,
-                    "simulated": int(args.mode == "simulated"),
-                })
-                tag = " [SIM]" if args.mode == "simulated" else ""
-                print(f"  D={dim} layer={layer} ratio={ratio}: recall={recall:.3f} "
-                      f"speedup={speedup:.2f}x{tag}"
-                      + (f"  ({unsupported} unsupported)" if unsupported else ""))
+                    p50 = lat.percentiles_ms()["p50"]
+                    recall = float(np.mean(recalls)) if recalls else float("nan")
+                    speedup = (full_p50 / p50) if p50 > 0 else float("nan")
+                    trial_rows.append({
+                        "trial": trial,
+                        "trial_seed": seed,
+                        "dimension": dim,
+                        "mask_from_layer": layer,
+                        "subspace_ratio": ratio,
+                        "subspace_dims": len(dims),
+                        "ef_search": args.ef_search,
+                        "k": args.k,
+                        "recall_at_k": recall,
+                        "p50_ms": p50,
+                        "full_p50_ms": full_p50,
+                        "speedup_vs_full": speedup,
+                        "unsupported_queries": unsupported,
+                        "simulated": int(args.mode == "simulated"),
+                    })
+                    tag = " [SIM]" if args.mode == "simulated" else ""
+                    print(
+                        f"  trial={trial} D={dim} layer={layer} ratio={ratio}: "
+                        f"recall={recall:.3f} speedup={speedup:.2f}x{tag}"
+                        + (f"  ({unsupported} unsupported)" if unsupported else "")
+                    )
 
         csv_path = cr.bench_common.RESULTS_DIR / f"option2_layer_sweep_d{dim}.csv"
-        cr.write_csv(csv_path, list(rows[0].keys()), rows)
+        rows = cr.write_trial_and_summary_csv(
+            csv_path,
+            trial_rows,
+            key_fields=["dimension", "mask_from_layer", "subspace_ratio", "ef_search", "k"],
+        )
+
+        layer_to_i = {L: i for i, L in enumerate(args.layers)}
+        ratio_to_j = {R: j for j, R in enumerate(args.ratios)}
+        recall_mat = np.full((len(args.layers), len(args.ratios)), np.nan)
+        recall_std = np.full_like(recall_mat, np.nan)
+        speed_mat = np.full_like(recall_mat, np.nan)
+        speed_std = np.full_like(recall_mat, np.nan)
+        for r in rows:
+            i = layer_to_i[int(r["mask_from_layer"])]
+            j = ratio_to_j[float(r["subspace_ratio"])]
+            recall_mat[i, j] = float(r["recall_at_k"])
+            recall_std[i, j] = float(r.get("recall_at_k_std", 0.0) or 0.0)
+            speed_mat[i, j] = float(r["speedup_vs_full"])
+            speed_std[i, j] = float(r.get("speedup_vs_full_std", 0.0) or 0.0)
 
         prefix = "[SIMULATED] " if args.mode == "simulated" else ""
         cr.heatmap(
             recall_mat, row_labels=args.layers, col_labels=args.ratios,
             xlabel="Subspace ratio (D_sub / D)", ylabel="mask_from_layer",
-            title=f"{prefix}Option 2 recall@K (D={dim})",
-            stem=f"option2_recall_heatmap_d{dim}", cbar_label="Recall@K", fmt="{:.2f}",
+            title=f"{prefix}Option 2 recall@K (D={dim}, n={args.trials})",
+            stem=f"option2_recall_heatmap_d{dim}", cbar_label="Recall@K (mean)",
+            fmt="{:.2f}", std_matrix=recall_std,
         )
         cr.heatmap(
             speed_mat, row_labels=args.layers, col_labels=args.ratios,
             xlabel="Subspace ratio (D_sub / D)", ylabel="mask_from_layer",
-            title=f"{prefix}Option 2 speedup vs full (D={dim})",
-            stem=f"option2_speedup_heatmap_d{dim}", cbar_label="Speedup (x)", fmt="{:.2f}",
+            title=f"{prefix}Option 2 speedup vs full (D={dim}, n={args.trials})",
+            stem=f"option2_speedup_heatmap_d{dim}", cbar_label="Speedup (x, mean)",
+            fmt="{:.2f}", std_matrix=speed_std,
         )
 
     print(f"[option2] done -> {run.root}")

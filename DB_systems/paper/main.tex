@@ -223,14 +223,18 @@ Blend alone never reduces full-distance work; it only biases routing.
 
 \subsection{Setup}
 
+\paragraph{Hardware and protocol.}
+Both suites run on the same Linux x86\_64 host via HTTP against local release
+binaries. Each configuration is repeated for $T{=}5$ independent query-sample
+trials; we report mean$\pm$sample std (see
+\texttt{DB\_systems/run\_unified\_paper\_bench.sh}).
+
 \paragraph{Attribution suite.}
-Synthetic corpora $N{=}10\mathrm{k}$, $Q{=}500$, $D\in\{768,1536\}$, seed~42;
+Synthetic corpora $N{=}10\mathrm{k}$, $Q{=}500$, $D\in\{768,1536\}$;
 baselines: vanilla Qdrant, post-query extract+client top-$m$, and XQdrant.
-Hardware for those runs: Apple Silicon laptop (suite orchestrator).
 
 \paragraph{Masked-distance suite.}
-HTTP against a release XQdrant binary, typically with
-\texttt{XQDRANT\_MASKED\_KERNEL=gather}.
+\texttt{XQDRANT\_MASKED\_KERNEL=gather} unless comparing kernels.
 Corpora: SIFT1M ($D{=}128$) and synthetic $N{=}50\mathrm{k}$ at $D\in\{768,1536\}$,
 $Q{=}500$, $k{=}10$, $\texttt{ef\_search}{=}128$.
 Canonical folders are listed in \texttt{DB\_systems/experiments/README.md};
@@ -475,8 +479,8 @@ High-$D$ Option~1 lacks a dedicated archive folder (high-$D$ collapse is evidenc
 via Option~2/X2).
 We did not instrument visited-set divergence (X4) or build projected indexes
 (Option~3).
-Attribution suite hardware differs from the Linux masked-suite host; absolute
-milliseconds are not cross-compared across suites.
+Reported means use $T{=}5$ trials; a full public cloud-image replay remains
+desirable for camera-ready artifacts.
 
 %=============================================================================
 \section{Conclusion}

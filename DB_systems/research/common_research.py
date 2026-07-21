@@ -21,6 +21,7 @@ dataset generation, provisioning, ground truth, recall, and CSV writing.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -37,16 +38,23 @@ if str(DB_SYSTEMS_DIR) not in sys.path:
 
 import bench_common  # noqa: E402
 from bench_common import (  # noqa: E402
+    NUM_TRIALS,
+    RANDOM_SEED,
     SIFT_DIR,
     Dataset,
     LatencyStats,
     SubspaceGT,
+    aggregate_trial_rows,
     brute_force_top_k,
     build_dataset,
     generate_dataset,
+    host_fingerprint,
     init_experiment_run,
     recall_at_k,
+    select_queries,
+    trial_seed,
     write_csv,
+    write_trial_and_summary_csv,
 )
 from bench_backends import HttpBackend, SearchResult, make_backend  # noqa: E402
 
@@ -97,7 +105,21 @@ def init_research_run(
     }
     if extra:
         metadata.update(extra)
+    metadata.setdefault("host", host_fingerprint())
     return init_experiment_run(run_id=run_id, metadata=metadata)
+
+
+def add_trials_arg(parser) -> None:
+    """Add ``--trials`` (default from BENCH_TRIALS / NUM_TRIALS)."""
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=int(os.environ.get("BENCH_TRIALS", str(NUM_TRIALS))),
+        help=(
+            "Independent repeated trials per configuration with distinct "
+            f"query-sample seeds (default: {NUM_TRIALS})"
+        ),
+    )
 
 
 def subspace_indices(dimension: int, ratio: float, seed: int = 0) -> np.ndarray:
@@ -400,10 +422,19 @@ def line_plot(
     title: str,
     stem: str,
     hline: float | None = None,
+    yerr: dict[str, Sequence[float]] | None = None,
 ) -> Path:
     plt = _mpl()
     fig, ax = plt.subplots(figsize=(7, 5))
     for label, ys in series.items():
+        err = None if yerr is None else yerr.get(label)
+        if err is not None:
+            err_arr = np.asarray(err, dtype=np.float64)
+            if np.any(np.isfinite(err_arr)) and np.nanmax(err_arr) > 0:
+                ax.errorbar(
+                    x, ys, yerr=err_arr, marker="o", linewidth=2, capsize=3, label=label
+                )
+                continue
         ax.plot(x, ys, marker="o", linewidth=2, label=label)
     if hline is not None:
         ax.axhline(hline, linestyle="--", color="gray", linewidth=1)
@@ -427,6 +458,7 @@ def heatmap(
     stem: str,
     cbar_label: str,
     fmt: str = "{:.2f}",
+    std_matrix: np.ndarray | None = None,
 ) -> Path:
     plt = _mpl()
     fig, ax = plt.subplots(figsize=(1.4 * len(col_labels) + 3, 1.0 * len(row_labels) + 3))
@@ -438,13 +470,22 @@ def heatmap(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    finite = matrix[np.isfinite(matrix)]
+    hi = float(np.max(finite)) if finite.size else 1.0
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             val = matrix[i, j]
-            if not np.isnan(val):
-                ax.text(j, i, fmt.format(val), ha="center", va="center",
-                        color="white" if val < np.nanmax(matrix) * 0.6 else "black",
-                        fontsize=9)
+            if np.isnan(val):
+                continue
+            if std_matrix is not None and np.isfinite(std_matrix[i, j]) and std_matrix[i, j] > 0:
+                text = f"{fmt.format(val)}\n±{std_matrix[i, j]:.2f}"
+            else:
+                text = fmt.format(val)
+            ax.text(
+                j, i, text, ha="center", va="center",
+                color="white" if val < hi * 0.6 else "black",
+                fontsize=8 if std_matrix is not None else 9,
+            )
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label(cbar_label)
     fig.tight_layout()
@@ -454,10 +495,14 @@ def heatmap(
 __all__ = [
     "Dataset",
     "LatencyStats",
+    "NUM_TRIALS",
     "QueryOutcome",
+    "RANDOM_SEED",
     "ResearchClient",
     "SubspaceGT",
     "add_dataset_args",
+    "add_trials_arg",
+    "aggregate_trial_rows",
     "bench_common",
     "brute_force_top_k",
     "build_dataset",
@@ -466,13 +511,17 @@ __all__ = [
     "full_top_k",
     "generate_dataset",
     "heatmap",
+    "host_fingerprint",
     "init_research_run",
     "iter_datasets",
     "line_plot",
     "make_backend",
     "recall_at_k",
     "save_fig",
+    "select_queries",
     "simulated_masked",
     "subspace_indices",
+    "trial_seed",
     "write_csv",
+    "write_trial_and_summary_csv",
 ]

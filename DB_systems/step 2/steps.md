@@ -1,10 +1,11 @@
 # XQdrant: Path to a 12-Page Full Paper
  
-**Current state:** ~7 pages (ACM sigconf, 2-column), 3 experiment axes
-(attribution, M1/M2/M3 masked traversal, K1/C1/V1 supporting studies), single-run
-point estimates, SIFT1M + synthetic corpora.
+**Current state (short track):** ~7-page ACM sigconf draft in `deliverable/`
+with unified-host T=5 mean±std for the primary attribution + SIFT masked
+results. Short-track variance/hardware gaps are closed; items below are
+*optional full-track expansions*.
  
-**Target:** ~12 pages, full research-track submission quality for
+**Target (full track):** ~12 pages, research-track submission quality for
 SIGMOD/VLDB/ICDE, and full-track (not just short-track) EDBT.
  
 This plan is additive — nothing in the current 7 pages needs to be removed,
@@ -57,10 +58,12 @@ needed — this is a rigor upgrade to existing content, not new content. Budget
 ~0.5 pages net (mostly captions and inline text growing slightly).
  
 **Concrete tasks:**
-- [ ] Modify experiment harness to loop N=5 (or more) trials per config
-- [ ] Aggregate mean/std in the CSV output layer
-- [ ] Update all plotting scripts to render error bars / std bands
-- [ ] Update every numeric claim in the text to include a range or ± figure
+- [x] Modify experiment harness to loop N=5 (or more) trials per config
+- [x] Aggregate mean/std in the CSV output layer
+- [x] Update all plotting scripts to render error bars / std bands
+- [x] Re-run unified HTTP eval (`run_unified_paper_bench.sh`) and refresh
+      numeric claims / figures in `deliverable/` with mean±std
+      (`2026-07-21_10-15-46__paper_attr_unified_t5` + sibling masked runs)
 ---
  
 ## 2. Formal Complexity Analysis for M2 (Hybrid Masked Traversal)

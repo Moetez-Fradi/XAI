@@ -26,6 +26,9 @@ RANDOM_SEED = 42
 NUM_VECTORS = 10_000
 NUM_QUERIES = 500
 TOP_K = 10
+# Independent repeated trials per configuration (different query-sample seeds).
+# Paper figures report mean ± sample std across these trials.
+NUM_TRIALS = int(os.environ.get("BENCH_TRIALS", "5"))
 WARMUP_QUERIES = 1_000
 # Extra (non-plain) hot paths — attribution, focus rescore, focus masked — are
 # warmed for this many queries so their page cache / scratch buffers are hot
@@ -557,3 +560,185 @@ def detect_physical_cores() -> int:
 
     count = os.cpu_count() or 1
     return max(1, count // 2)
+
+
+# ---------------------------------------------------------------------------
+# Multi-trial aggregation + host fingerprint (paper statistical rigor)
+# ---------------------------------------------------------------------------
+
+
+def trial_seed(trial: int, base: int = RANDOM_SEED) -> int:
+    """Deterministic seed for trial ``trial`` (0-indexed)."""
+    return int(base) + int(trial)
+
+
+def select_query_indices(
+    num_available: int,
+    num_queries: int,
+    seed: int = RANDOM_SEED,
+) -> np.ndarray:
+    """
+    Sample (or permute) query indices for one trial.
+
+    When ``num_queries >= num_available``, returns a seeded permutation of all
+    indices so trial-to-trial variance still captures order / cache effects.
+    Otherwise samples without replacement.
+    """
+    n_avail = int(num_available)
+    n = min(int(num_queries), n_avail)
+    rng = np.random.default_rng(int(seed))
+    if n >= n_avail:
+        return rng.permutation(n_avail).astype(np.int64)
+    return rng.choice(n_avail, size=n, replace=False).astype(np.int64)
+
+
+def select_queries(
+    dataset: Dataset,
+    num_queries: int,
+    seed: int = RANDOM_SEED,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(queries, original_indices)`` for a trial."""
+    idx = select_query_indices(dataset.num_queries, num_queries, seed=seed)
+    return dataset.queries[idx], idx
+
+
+def host_fingerprint() -> dict[str, Any]:
+    """
+    Capture enough host identity that attribution and masked-distance suites
+    can be verified to share the same benchmark machine.
+    """
+    import platform
+    import subprocess
+
+    info: dict[str, Any] = {
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "python": platform.python_version(),
+        "cpu_count_logical": os.cpu_count(),
+        "cpu_count_affinity": detect_physical_cores(),
+        "hostname": platform.node(),
+    }
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as handle:
+            for line in handle:
+                if line.lower().startswith("model name"):
+                    info["cpu_model"] = line.split(":", 1)[1].strip()
+                    break
+    except OSError:
+        pass
+    if "cpu_model" not in info and sys.platform == "darwin":
+        try:
+            out = subprocess.check_output(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            info["cpu_model"] = out.strip()
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    return info
+
+
+def _is_metric_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return True
+    return False
+
+
+def aggregate_trial_rows(
+    rows: Sequence[dict[str, Any]],
+    *,
+    key_fields: Sequence[str],
+    metric_fields: Sequence[str] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Collapse per-trial rows into mean / sample-std summaries.
+
+    The mean is stored under the original metric name (so existing plotters keep
+    working); sample std (ddof=1) is stored as ``{metric}_std``. A ``trials``
+    column records how many trials contributed.
+    """
+    from collections import defaultdict
+
+    if not rows:
+        return []
+
+    groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        key = tuple(row[k] for k in key_fields)
+        groups[key].append(dict(row))
+
+    # Seeds / counters are trial metadata, not quantities to average.
+    skip = set(key_fields) | {"trial", "trial_seed", "unsupported_queries"}
+    out: list[dict[str, Any]] = []
+    for key, group in groups.items():
+        agg: dict[str, Any] = {k: group[0][k] for k in key_fields}
+        agg["trials"] = len(group)
+        metrics = list(metric_fields) if metric_fields is not None else [
+            k for k, v in group[0].items()
+            if k not in skip and not str(k).endswith("_std") and _is_metric_value(v)
+        ]
+        for metric in metrics:
+            vals: list[float] = []
+            for g in group:
+                if metric not in g:
+                    continue
+                v = g[metric]
+                if v is None:
+                    continue
+                fv = float(v)
+                if np.isnan(fv):
+                    continue
+                vals.append(fv)
+            if not vals:
+                agg[metric] = float("nan")
+                agg[f"{metric}_std"] = float("nan")
+            else:
+                arr = np.asarray(vals, dtype=np.float64)
+                agg[metric] = float(arr.mean())
+                agg[f"{metric}_std"] = (
+                    float(arr.std(ddof=1)) if arr.size > 1 else 0.0
+                )
+        # Sum unsupported query counts across trials when present.
+        if any("unsupported_queries" in g for g in group):
+            agg["unsupported_queries"] = int(
+                sum(int(g.get("unsupported_queries", 0) or 0) for g in group)
+            )
+        # Preserve non-metric, non-key string tags from the first trial (e.g. mode).
+        for k, v in group[0].items():
+            if k in agg or k in skip or k in metrics:
+                continue
+            if not _is_metric_value(v):
+                agg[k] = v
+        out.append(agg)
+
+    # Stable order matching first-seen keys.
+    order = {tuple(r[k] for k in key_fields): i for i, r in enumerate(rows)}
+    out.sort(key=lambda r: order.get(tuple(r[k] for k in key_fields), 10**9))
+    return out
+
+
+def write_trial_and_summary_csv(
+    path: Path,
+    rows: Sequence[dict[str, Any]],
+    *,
+    key_fields: Sequence[str],
+    metric_fields: Sequence[str] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Write per-trial CSV next to ``path`` (``*_trials.csv``) and the aggregated
+    mean±std summary at ``path``. Returns the aggregated rows.
+    """
+    if not rows:
+        return []
+    trial_path = path.with_name(path.stem + "_trials" + path.suffix)
+    write_csv(trial_path, fieldnames=list(rows[0].keys()), rows=rows)
+    aggregated = aggregate_trial_rows(
+        rows, key_fields=key_fields, metric_fields=metric_fields
+    )
+    write_csv(path, fieldnames=list(aggregated[0].keys()), rows=aggregated)
+    return aggregated

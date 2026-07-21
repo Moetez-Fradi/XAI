@@ -35,12 +35,14 @@ from bench_common import (
     HNSW_EF_CONSTRUCT,
     HNSW_M,
     NUM_QUERIES,
+    NUM_TRIALS,
     SIFT_DIR,
     SUBSPACE_RATIOS,
     TOP_K,
     build_dataset,
     ensure_output_dirs,
     git_commit,
+    host_fingerprint,
     init_experiment_run,
 )
 from bench_tests import (
@@ -134,6 +136,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="HTTP mode only: run endpoint pre-flight checks and exit",
     )
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=int(os.environ.get("BENCH_TRIALS", str(NUM_TRIALS))),
+        help=(
+            "Independent repeated trials per configuration with distinct query "
+            f"sample seeds (default: {NUM_TRIALS}; env BENCH_TRIALS)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -183,6 +194,10 @@ def main() -> int:
             "xqdrant": fetch_server_info(args.xqdrant_url),
         }
 
+    if args.trials < 1:
+        print("ERROR: --trials must be >= 1", file=sys.stderr)
+        return 2
+
     run = init_experiment_run(
         run_id=args.experiment_id,
         metadata={
@@ -194,6 +209,7 @@ def main() -> int:
             "dimensions": [d.dimension for d in datasets],
             "num_vectors": datasets[0].num_vectors,
             "queries": args.queries,
+            "trials": args.trials,
             "tests": args.tests,
             "top_k": TOP_K,
             "default_ef_search": DEFAULT_EF_SEARCH,
@@ -201,6 +217,7 @@ def main() -> int:
             "hnsw_config": {"m": HNSW_M, "ef_construct": HNSW_EF_CONSTRUCT},
             "git_commit": git_commit(),
             "servers": servers,
+            "host": host_fingerprint(),
         },
     )
     ensure_output_dirs()
@@ -213,11 +230,15 @@ def main() -> int:
     print(f"Dataset:     {args.dataset} ({datasets[0].distance}, N={datasets[0].num_vectors})")
     print(f"Dimensions:  {[d.dimension for d in datasets]}")
     print(f"Queries:     {args.queries}")
+    print(f"Trials:      {args.trials} (mean±std across query-sample seeds)")
     print(f"Results dir: {bench_common.RESULTS_DIR}")
     print(f"Plots dir:   {bench_common.PLOTS_DIR}")
     if args.mode == "http":
         print(f"Qdrant URL:  {args.qdrant_url}")
         print(f"XQdrant URL: {args.xqdrant_url}")
+    host = host_fingerprint()
+    print(f"Host:        {host.get('cpu_model', host.get('processor', '?'))} "
+          f"({host.get('system')} {host.get('machine')})")
     print("=" * 72)
 
     evaluated_dims: list[int] = []
@@ -261,52 +282,58 @@ def main() -> int:
             xqdrant.wait_for_indexing(expected_points=dataset.num_vectors)
 
         if should_run(args.tests, "A"):
-            print("[Test A] Latency vs. Recall@K (ef_search sweep)...")
+            print(f"[Test A] Latency vs. Recall@K (ef_search sweep, {args.trials} trials)...")
             run_test_latency_recall(
                 vanilla=vanilla,
                 xqdrant=xqdrant,
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         if should_run(args.tests, "B"):
-            print("[Test B] Multi-threaded throughput (QPS)...")
+            print(f"[Test B] Multi-threaded throughput (QPS, {args.trials} trials)...")
             run_test_throughput(
                 backend=vanilla,
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         if should_run(args.tests, "C"):
-            print("[Test C] Attribution depth (m) scaling...")
+            print(f"[Test C] Attribution depth (m) scaling ({args.trials} trials)...")
             run_test_attribution_depth(
                 post_query=post_query,
                 xqdrant=xqdrant,
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         if should_run(args.tests, "D"):
-            print("[Test D] Focus rescore subspace latency...")
+            print(f"[Test D] Focus rescore subspace latency ({args.trials} trials)...")
             run_test_subspace_pruning(
                 backend=xqdrant,
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         if should_run(args.tests, "E"):
-            print("[Test E] Masked HNSW subspace (focus.masked)...")
+            print(f"[Test E] Masked HNSW subspace (focus.masked, {args.trials} trials)...")
             run_test_masked_subspace(
                 backend=xqdrant,
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         if should_run(args.tests, "F"):
-            print("[Test F] Subspace coherence diagnostic (offline)...")
+            print(f"[Test F] Subspace coherence diagnostic (offline, {args.trials} trials)...")
             run_test_subspace_coherence(
                 dataset=dataset,
                 num_queries=args.queries,
+                num_trials=args.trials,
             )
 
         evaluated_dims.append(dimension)

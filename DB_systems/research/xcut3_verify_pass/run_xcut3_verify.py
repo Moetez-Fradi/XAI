@@ -9,6 +9,8 @@ Requires XQdrant ``focus.verify``. Compares masked vs masked+verify under:
 3. **Overfetch** — request ``limit = m·k`` with verify, keep top-k (true fast-filter).
 4. **Hybrid** — optional ``mask_from_layer`` + verify.
 
+Emits mean±std across ``--trials`` independent query-sample seeds.
+
 Metric folder: experiments/<ts>__xcut3_verify_pass__verify_recall_recovery/
 """
 
@@ -62,6 +64,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--experiment-id", default=None,
                    help="Optional run_id suffix override for experiments/ folder name")
     cr.add_dataset_args(p)
+    cr.add_trials_arg(p)
     return p.parse_args()
 
 
@@ -108,6 +111,7 @@ def _run_http_variant(
 def _run_simulated_variant(
     dataset,
     queries,
+    q_idx,
     dims,
     k: int,
     *,
@@ -119,13 +123,14 @@ def _run_simulated_variant(
     """Offline stand-in: masked ≈ subspace top; verify ≈ blend toward full GT."""
     lat = LatencyStats()
     id_lists: list[list[int]] = []
-    for i, q in enumerate(queries):
+    for local_i, q in enumerate(queries):
         res, ns, _ = cr.simulated_masked(
             q, dataset, k, dims, mask_from_layer=mask_from_layer,
         )
         ids = list(res.ids)
         if verify:
-            full_ids = cr.full_top_k(dataset, i, q, k, norms_sq)
+            src = int(q_idx[local_i])
+            full_ids = cr.full_top_k(dataset, src, q, k, norms_sq)
             # Overfetch models a larger candidate pool before full re-rank.
             pool = max(k, overfetch * k)
             sub_ids, _ = cr.SubspaceGT(
@@ -156,6 +161,9 @@ def main() -> int:
     for m in args.overfetch:
         if m < 1:
             raise SystemExit("--overfetch values must be >= 1")
+    if args.trials < 1:
+        print("ERROR: --trials must be >= 1", file=sys.stderr)
+        return 2
 
     xqdrant_url = args.xqdrant_url or args.qdrant_url
     run_id = None
@@ -176,19 +184,16 @@ def main() -> int:
             "overfetch": args.overfetch,
             "layers": args.layers,
         },
-        extra={"dataset": args.dataset},
+        extra={"dataset": args.dataset, "trials": args.trials},
         run_id=run_id,
     )
-    print(f"[xcut3] experiment: {run.root}")
+    print(f"[xcut3] experiment: {run.root}  trials={args.trials}")
     print(f"[xcut3] primary metric = full-space Recall@{args.k}; "
           f"overfetch={args.overfetch}; layers={[_layer_tag(L) for L in args.layers]}")
 
     for dataset in cr.iter_datasets(args):
         dim = dataset.dimension
-        queries = dataset.queries[: min(args.queries, dataset.num_queries)]
         norms = cr.full_norms_sq(dataset)
-        full_gt = [cr.full_top_k(dataset, i, q, args.k, norms)
-                   for i, q in enumerate(queries)]
 
         client = None
         if args.mode == "http":
@@ -198,147 +203,189 @@ def main() -> int:
             if not args.no_provision:
                 print(f"  Waiting for index build (D={dim}, N={dataset.num_vectors})...")
                 client.wait_for_indexing(expected_points=dataset.num_vectors)
-            client.warmup(queries, min(200, len(queries)))
+            warm_q, _ = cr.select_queries(dataset, min(200, args.queries), seed=cr.RANDOM_SEED)
+            client.warmup(warm_q, len(warm_q))
 
-        rows: list[dict] = []
-        # For plotting: one series set per layer, full-recall vs ratio
-        plot_by_layer: dict[str, dict[str, list[float]]] = {}
+        trial_rows: list[dict] = []
 
-        for layer in args.layers:
-            mfl = _mask_from_layer_arg(layer)
-            layer_label = str(_layer_tag(layer))
-            plot_by_layer[layer_label] = {
-                "ratios": [],
-                "masked_full": [],
-            }
-            for m in args.overfetch:
-                plot_by_layer[layer_label][f"verify_m{m}_full"] = []
+        for trial in range(args.trials):
+            seed = cr.trial_seed(trial)
+            queries, q_idx = cr.select_queries(dataset, args.queries, seed=seed)
+            full_gt = [
+                cr.full_top_k(dataset, int(q_idx[local_i]), q, args.k, norms)
+                for local_i, q in enumerate(queries)
+            ]
 
-            for ratio in args.ratios:
-                dims = cr.subspace_indices(dim, ratio)
-                subspace_gt = cr.SubspaceGT(
-                    dataset.vectors, dims, distance=dataset.distance,
-                )
-                sub_gt = [subspace_gt.top_k(q, args.k)[0] for q in queries]
+            for layer in args.layers:
+                mfl = _mask_from_layer_arg(layer)
+                layer_label = str(_layer_tag(layer))
 
-                # Masked baseline (limit=k, verify off) — once per ratio/layer
-                if args.mode == "http":
-                    off_lat, off_ids, off_un = _run_http_variant(
-                        client, queries, dims, args.k, args.ef_search,
-                        verify=False, limit=args.k, mask_from_layer=mfl,
+                for ratio in args.ratios:
+                    dims = cr.subspace_indices(dim, ratio, seed=seed)
+                    subspace_gt = cr.SubspaceGT(
+                        dataset.vectors, dims, distance=dataset.distance,
                     )
-                else:
-                    off_lat, off_ids, off_un = _run_simulated_variant(
-                        dataset, queries, dims, args.k,
-                        verify=False, overfetch=1, mask_from_layer=mfl, norms_sq=norms,
-                    )
+                    sub_gt = [subspace_gt.top_k(q, args.k)[0] for q in queries]
 
-                masked_full = _mean_recall(off_ids, full_gt, args.k)
-                masked_sub = _mean_recall(off_ids, sub_gt, args.k)
-                off_p50 = off_lat.percentiles_ms()["p50"]
-
-                plot_by_layer[layer_label]["ratios"].append(ratio)
-                plot_by_layer[layer_label]["masked_full"].append(masked_full)
-
-                for m in args.overfetch:
-                    limit = m * args.k
+                    # Masked baseline (limit=k, verify off) — once per ratio/layer
                     if args.mode == "http":
-                        on_lat, on_ids, on_un = _run_http_variant(
+                        off_lat, off_ids, off_un = _run_http_variant(
                             client, queries, dims, args.k, args.ef_search,
-                            verify=True, limit=limit, mask_from_layer=mfl,
+                            verify=False, limit=args.k, mask_from_layer=mfl,
                         )
                     else:
-                        on_lat, on_ids, on_un = _run_simulated_variant(
-                            dataset, queries, dims, args.k,
-                            verify=True, overfetch=m, mask_from_layer=mfl,
-                            norms_sq=norms,
+                        off_lat, off_ids, off_un = _run_simulated_variant(
+                            dataset, queries, q_idx, dims, args.k,
+                            verify=False, overfetch=1, mask_from_layer=mfl, norms_sq=norms,
                         )
 
-                    # Keep top-k after server returned up to limit (already full-ranked if verify)
-                    truncated = [ids[: args.k] for ids in on_ids]
-                    verify_full = _mean_recall(truncated, full_gt, args.k)
-                    verify_sub = _mean_recall(truncated, sub_gt, args.k)
-                    on_p50 = on_lat.percentiles_ms()["p50"]
+                    masked_full = _mean_recall(off_ids, full_gt, args.k)
+                    masked_sub = _mean_recall(off_ids, sub_gt, args.k)
+                    off_p50 = off_lat.percentiles_ms()["p50"]
 
-                    row = {
-                        "dimension": dim,
-                        "subspace_ratio": ratio,
-                        "subspace_dims": len(dims),
-                        "mask_from_layer": layer_label,
-                        "overfetch": m,
-                        "query_limit": limit,
-                        "ef_search": args.ef_search,
-                        "k": args.k,
-                        "masked_full_recall": masked_full,
-                        "verify_full_recall": verify_full,
-                        "full_recall_recovered": (
-                            verify_full - masked_full
-                            if (not np.isnan(verify_full) and not np.isnan(masked_full))
-                            else float("nan")
-                        ),
-                        "masked_subspace_recall": masked_sub,
-                        "verify_subspace_recall": verify_sub,
-                        "subspace_recall_delta": (
-                            verify_sub - masked_sub
-                            if (not np.isnan(verify_sub) and not np.isnan(masked_sub))
-                            else float("nan")
-                        ),
-                        "masked_p50_ms": off_p50,
-                        "verify_p50_ms": on_p50,
-                        "verify_latency_overhead_ms": on_p50 - off_p50,
-                        "unsupported_queries": off_un + on_un,
-                        "simulated": int(args.mode == "simulated"),
-                    }
-                    rows.append(row)
-                    plot_by_layer[layer_label][f"verify_m{m}_full"].append(verify_full)
+                    for m in args.overfetch:
+                        limit = m * args.k
+                        if args.mode == "http":
+                            on_lat, on_ids, on_un = _run_http_variant(
+                                client, queries, dims, args.k, args.ef_search,
+                                verify=True, limit=limit, mask_from_layer=mfl,
+                            )
+                        else:
+                            on_lat, on_ids, on_un = _run_simulated_variant(
+                                dataset, queries, q_idx, dims, args.k,
+                                verify=True, overfetch=m, mask_from_layer=mfl,
+                                norms_sq=norms,
+                            )
 
-                    tag = " [SIM]" if args.mode == "simulated" else ""
-                    print(
-                        f"  D={dim} layer={layer_label} ratio={ratio} m={m}: "
-                        f"full {masked_full:.3f}->{verify_full:.3f} "
-                        f"(+{row['full_recall_recovered']:.3f}) "
-                        f"sub {masked_sub:.3f}->{verify_sub:.3f} "
-                        f"cost=+{row['verify_latency_overhead_ms']:.3f}ms{tag}"
-                    )
+                        # Keep top-k after server returned up to limit (already full-ranked if verify)
+                        truncated = [ids[: args.k] for ids in on_ids]
+                        verify_full = _mean_recall(truncated, full_gt, args.k)
+                        verify_sub = _mean_recall(truncated, sub_gt, args.k)
+                        on_p50 = on_lat.percentiles_ms()["p50"]
 
-        if not rows:
+                        row = {
+                            "trial": trial,
+                            "trial_seed": seed,
+                            "dimension": dim,
+                            "subspace_ratio": ratio,
+                            "subspace_dims": len(dims),
+                            "mask_from_layer": layer_label,
+                            "overfetch": m,
+                            "query_limit": limit,
+                            "ef_search": args.ef_search,
+                            "k": args.k,
+                            "masked_full_recall": masked_full,
+                            "verify_full_recall": verify_full,
+                            "full_recall_recovered": (
+                                verify_full - masked_full
+                                if (not np.isnan(verify_full) and not np.isnan(masked_full))
+                                else float("nan")
+                            ),
+                            "masked_subspace_recall": masked_sub,
+                            "verify_subspace_recall": verify_sub,
+                            "subspace_recall_delta": (
+                                verify_sub - masked_sub
+                                if (not np.isnan(verify_sub) and not np.isnan(masked_sub))
+                                else float("nan")
+                            ),
+                            "masked_p50_ms": off_p50,
+                            "verify_p50_ms": on_p50,
+                            "verify_latency_overhead_ms": on_p50 - off_p50,
+                            "unsupported_queries": off_un + on_un,
+                            "simulated": int(args.mode == "simulated"),
+                        }
+                        trial_rows.append(row)
+
+                        tag = " [SIM]" if args.mode == "simulated" else ""
+                        print(
+                            f"  trial={trial} D={dim} layer={layer_label} ratio={ratio} m={m}: "
+                            f"full {masked_full:.3f}->{verify_full:.3f} "
+                            f"(+{row['full_recall_recovered']:.3f}) "
+                            f"sub {masked_sub:.3f}->{verify_sub:.3f} "
+                            f"cost=+{row['verify_latency_overhead_ms']:.3f}ms{tag}"
+                        )
+
+        if not trial_rows:
             print(f"  D={dim}: no rows")
             continue
 
         csv_path = cr.bench_common.RESULTS_DIR / f"xcut3_verify_d{dim}.csv"
-        cr.write_csv(csv_path, list(rows[0].keys()), rows)
+        rows = cr.write_trial_and_summary_csv(
+            csv_path,
+            trial_rows,
+            key_fields=[
+                "dimension", "subspace_ratio", "mask_from_layer",
+                "overfetch", "ef_search", "k",
+            ],
+        )
 
         prefix = "[SIMULATED] " if args.mode == "simulated" else ""
-        for layer_label, series_data in plot_by_layer.items():
-            xs = series_data["ratios"]
-            series = {"masked (full GT)": series_data["masked_full"]}
+        base_overfetch = min(args.overfetch)
+        for layer in args.layers:
+            layer_label = str(_layer_tag(layer))
+            layer_rows = [r for r in rows if r["mask_from_layer"] == layer_label]
+            base_rows = sorted(
+                [r for r in layer_rows if int(r["overfetch"]) == base_overfetch],
+                key=lambda r: float(r["subspace_ratio"]),
+            )
+            xs = [float(r["subspace_ratio"]) for r in base_rows]
+            series = {
+                "masked (full GT)": [float(r["masked_full_recall"]) for r in base_rows],
+            }
+            yerr = {
+                "masked (full GT)": [
+                    float(r.get("masked_full_recall_std", 0.0) or 0.0) for r in base_rows
+                ],
+            }
             for m in args.overfetch:
+                m_rows = sorted(
+                    [r for r in layer_rows if int(r["overfetch"]) == m],
+                    key=lambda r: float(r["subspace_ratio"]),
+                )
                 label = f"verify m={m} (full GT)" if m > 1 else "verify m=1 (full GT)"
-                series[label] = series_data[f"verify_m{m}_full"]
+                series[label] = [float(r["verify_full_recall"]) for r in m_rows]
+                yerr[label] = [
+                    float(r.get("verify_full_recall_std", 0.0) or 0.0) for r in m_rows
+                ]
             cr.line_plot(
                 xs, series,
+                yerr=yerr,
                 xlabel="Subspace ratio (D_sub / D)",
-                ylabel=f"Recall@{args.k} (full-space GT)",
-                title=f"{prefix}X3 verify full-space recall (D={dim}, layer={layer_label})",
+                ylabel=f"Recall@{args.k} (full-space GT, mean ± std)",
+                title=f"{prefix}X3 verify full-space recall (D={dim}, layer={layer_label}, n={args.trials})",
                 stem=f"xcut3_verify_full_recall_d{dim}_layer_{layer_label}",
                 hline=None,
             )
 
             # Secondary: subspace recall for m=1 only (document the old pitfall)
-            sub_rows = [
-                r for r in rows
-                if r["mask_from_layer"] == layer_label and r["overfetch"] == 1
-            ]
+            sub_rows = sorted(
+                [r for r in layer_rows if int(r["overfetch"]) == 1],
+                key=lambda r: float(r["subspace_ratio"]),
+            )
             if sub_rows:
                 cr.line_plot(
-                    [r["subspace_ratio"] for r in sub_rows],
+                    [float(r["subspace_ratio"]) for r in sub_rows],
                     {
-                        "masked (subspace GT)": [r["masked_subspace_recall"] for r in sub_rows],
-                        "verify m=1 (subspace GT)": [r["verify_subspace_recall"] for r in sub_rows],
+                        "masked (subspace GT)": [
+                            float(r["masked_subspace_recall"]) for r in sub_rows
+                        ],
+                        "verify m=1 (subspace GT)": [
+                            float(r["verify_subspace_recall"]) for r in sub_rows
+                        ],
+                    },
+                    yerr={
+                        "masked (subspace GT)": [
+                            float(r.get("masked_subspace_recall_std", 0.0) or 0.0)
+                            for r in sub_rows
+                        ],
+                        "verify m=1 (subspace GT)": [
+                            float(r.get("verify_subspace_recall_std", 0.0) or 0.0)
+                            for r in sub_rows
+                        ],
                     },
                     xlabel="Subspace ratio (D_sub / D)",
-                    ylabel=f"Recall@{args.k} (subspace GT)",
-                    title=f"{prefix}X3 subspace GT (ref only; D={dim}, layer={layer_label})",
+                    ylabel=f"Recall@{args.k} (subspace GT, mean ± std)",
+                    title=f"{prefix}X3 subspace GT (ref only; D={dim}, layer={layer_label}, n={args.trials})",
                     stem=f"xcut3_verify_subspace_recall_d{dim}_layer_{layer_label}",
                     hline=None,
                 )

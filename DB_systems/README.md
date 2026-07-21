@@ -58,8 +58,27 @@ Research scripts accept the same flags, e.g.:
 
 ```bash
 python research/option1_naive_masked/run_option1_recall_collapse.py \
-    --mode http --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --queries 200
+    --mode http --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --queries 200 --trials 5
 ```
+
+### Paper-quality unified re-run (same host + multi-trial)
+
+To close the hardware-skew and point-estimate gaps, run attribution and masked
+suites on one Linux host with $T\geq 5$ trials:
+
+```bash
+# starts local release binaries on :6335 (Qdrant) and :6333 (XQdrant)
+./run_unified_paper_bench.sh
+
+# quick pipeline check
+./run_unified_paper_bench.sh --smoke
+
+# reuse already-running servers
+SKIP_SERVERS=1 BENCH_TRIALS=5 ./run_unified_paper_bench.sh
+```
+
+Each CSV gets a `*_trials.csv` sibling plus a mean±std summary; plots draw error
+bars when `*_std` columns are present. Manifests record `host` + `trials`.
 
 Override the data location with `--sift-dir` or `SIFT_DIR=/path/to/sift`.
 
