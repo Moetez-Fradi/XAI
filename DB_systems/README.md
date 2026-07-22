@@ -1,278 +1,141 @@
-# XQdrant Benchmarking Suite
+# DB_systems — experiment harness for the XQdrant paper
 
-Automated, end-to-end evaluation harness for **XQdrant** — our Qdrant fork that adds per-dimension feature attribution to the vector search API — targeting SIGMOD/VLDB-style systems papers.
+This folder is the **artifact companion** to the short paper in
+[`../deliverable/`](../deliverable/)
+(*XQdrant: In-Database Attribution and Masked-Distance Subspace Search over HNSW*).
 
-## Qdrant vs. XQdrant (summary)
+If you opened the repo after reading the paper, start here. Folder names still
+use older `option*` / `xcut*` labels; the paper uses **M1 / M2 / M3 / K1 / C1 / V1**.
+Use the map below — do not rename directories (experiment IDs and scripts depend on them).
 
+| Paper | Paper § | Folder under `research/` | Verdict (Table 2) |
+|-------|---------|--------------------------|-------------------|
+| Attribution | §3, §5.2 | root suite Tests A–C (`bench_suite.py`) | **Keep** |
+| Focus rescoring only | §5.2 | root suite Test D | Not an accelerator |
+| **M1** naive mask | §4.2, §5.3 | [`option1_naive_masked/`](./research/option1_naive_masked/) | Baseline only |
+| **M2** hybrid cutoff | §4.3, §5.4 | [`option2_hybrid_layer_cutoff/`](./research/option2_hybrid_layer_cutoff/) | **Keep** (navigability; e2e speedup &lt; 1) |
+| **K1** gather vs repack | §4.5, §5.5 | [`xcut1_gather_vs_repack/`](./research/xcut1_gather_vs_repack/) | **Keep** (micro); does not close e2e gap |
+| **C1** coherence | §2.3, §5.6 | [`xcut2_subspace_coherence/`](./research/xcut2_subspace_coherence/) | **Keep** diagnostic |
+| **V1** verify ± overfetch | §4.6, §5.7 | [`xcut3_verify_pass/`](./research/xcut3_verify_pass/) | Conditional (needs overfetch + coherent data) |
+| **M3** α-blend | §4.4, §5.8 | [`option4_weighted_blend/`](./research/option4_weighted_blend/) | **Skip** (best at α=0 ≡ M2) |
 
-| Aspect          | Vanilla Qdrant (`/qdrant`)                                                   | XQdrant (`/XQdrant`)                                                               |
-| --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Query API       | `POST /collections/{name}/points/query` returns top-k IDs + aggregate scores | Same endpoint, extended with optional fields                                       |
-| Attribution     | Not available; client must fetch vectors and compute top-m dimensions        | `with_dims_explained: true | { "top": m }` returns per-hit dimension contributions |
-| Subspace search | Full-vector HNSW only                                                        | `query.nearest.focus` rescore **or** `focus.masked` in HNSW hot path               |
-| Hot path        | Standard HNSW traversal                                                      | HNSW unchanged; attribution runs as collection-layer post-processing               |
-| Top-m selection | Client: full sort O(D log D)                                                 | Server: bounded selection O(D log m) via `select_nth_unstable`                     |
+Out of short-paper scope (mentioned as future / full-track only):
 
+| Idea | Folder | Notes |
+|------|--------|-------|
+| Projected index | [`option3_projected_index/`](./research/option3_projected_index/) | Future work (§6–7); ceiling measurable without Rust |
+| Visited-set divergence | [`xcut4_divergence/`](./research/xcut4_divergence/) | Full-paper plan only; not in short draft |
+| Full-track expansion | [`full_paper_plan/`](./full_paper_plan/) | Optional 12-page expansions — ignore for the short paper |
 
-See [`../docs/working.md`](../docs/working.md) for design notes and
-[`../docs/README.md`](../docs/README.md) for the paper↔research naming map
-(M1/M2/… vs Option/X).
+Design writeups for each mechanism: [`../xqdrant_docs/`](../xqdrant_docs/).  
+Engine fork: [`../XQdrant/`](../XQdrant/).  
+Canonical figures: [`../deliverable/figures/`](../deliverable/figures/).  
+Local CSV/plot archives: [`./experiments/`](./experiments/) (gitignored; regenerate with the scripts below).
 
-## Baselines evaluated
+---
 
-1. **Vanilla Qdrant** — standard nearest-neighbor query (`limit`, `params.hnsw_ef`).
-2. **Post-Query Extraction** — vanilla search, then `POST /points` vector retrieve, then client-side full-sort attribution.
-3. **XQdrant (In-Database)** — single query with `with_dims_explained` (and `nearest.focus` for subspace tests).
+## Paper argument → what to open
 
+Follow the same order as §5 of the paper:
 
+1. **Attribution is a win** — run Tests A + C (latency–recall + depth *m*), or open
+   [`research/step0_baseline_done/`](./research/step0_baseline_done/) for which root-suite
+   outputs map to Figures 2–3.
+2. **Focus rescoring ≠ traversal speedup** — Test D (§5.2 / Figure 4).
+3. **M1 collapses navigability** — `option1_naive_masked` (§5.3 / Figure 5).
+4. **M2 restores recall, not latency** — `option2_hybrid_layer_cutoff` (§5.4 / Figures 6–8).
+5. **K1 explains the latency ceiling** — `xcut1_gather_vs_repack` (§5.5 / Figure 9).
+6. **C1 explains the high-D recall ceiling** — `xcut2_subspace_coherence` (§5.6 / Figures 10–11).
+7. **V1 + overfetch is conditional** — `xcut3_verify_pass` (§5.7 / Figures 12–13).
+8. **M3 is dominated by M2** — `option4_weighted_blend` (§5.8 / Figure 14).
 
-## Datasets
+Per-mechanism runners, flags, and canonical experiment folder names live in
+[`research/README.md`](./research/README.md).
 
-Two corpora are supported via `--dataset`:
+---
 
-| `--dataset` | Vectors | D | Distance | Ground truth |
-|-------------|---------|---|----------|--------------|
-| `synthetic` (default) | random Gaussian, L2-normalized | 768 / 1536 (`--dimensions`) | Dot | computed exactly |
-| `sift1m` | SIFT1M descriptors | 128 | **Euclid** | bundled top-100 (full runs) |
+## Quick reproduce (paper protocol)
 
-SIFT1M is the realistic option: real correlated dimensions, so subspace/masked recall is meaningful (random vectors have near-zero subspace coherence). Fetch it once:
+Same-host HTTP eval with *T*≥5 trials (paper §5.1 / §8):
 
 ```bash
 cd DB_systems
-./fetch_sift.sh            # downloads into data/sift/ (~161MB)
+./fetch_sift.sh                          # once; SIFT1M → data/sift/
+./run_unified_paper_bench.sh             # starts :6335 Qdrant + :6333 XQdrant
+# or: SKIP_SERVERS=1 BENCH_TRIALS=5 ./run_unified_paper_bench.sh
+./run_unified_paper_bench.sh --smoke     # short pipeline check
 ```
 
-Then run the suite against it (the collection is auto-created with Euclid distance):
+Defaults: gather kernel (`XQDRANT_MASKED_KERNEL=gather`), vanilla Qdrant on
+`:6335`, XQdrant on `:6333`. Build release binaries first under `../qdrant` and
+`../XQdrant`.
+
+Attribution-only / exploratory suite (Tests A–E):
 
 ```bash
-BENCH_MODE=http BENCH_DATASET=sift1m \
+BENCH_MODE=http \
 QDRANT_URL=http://127.0.0.1:6335 XQDRANT_URL=http://127.0.0.1:6333 \
-./run_bench.sh --dataset sift1m --queries 500
+./run_bench.sh
 ```
 
-Quick subsampled iteration (invalidates bundled GT → recomputed):
+Offline pipeline check (no servers): `./run_bench.sh` (simulated backend).
 
-```bash
-python bench_suite.py --mode http --dataset sift1m --num-vectors 100000 --queries 200
-```
-
-Research scripts accept the same flags, e.g.:
-
-```bash
-python research/option1_naive_masked/run_option1_recall_collapse.py \
-    --mode http --xqdrant-url http://127.0.0.1:6333 --dataset sift1m --queries 200 --trials 5
-```
-
-### Paper-quality unified re-run (same host + multi-trial)
-
-To close the hardware-skew and point-estimate gaps, run attribution and masked
-suites on one Linux host with $T\geq 5$ trials:
-
-```bash
-# starts local release binaries on :6335 (Qdrant) and :6333 (XQdrant)
-./run_unified_paper_bench.sh
-
-# quick pipeline check
-./run_unified_paper_bench.sh --smoke
-
-# reuse already-running servers
-SKIP_SERVERS=1 BENCH_TRIALS=5 ./run_unified_paper_bench.sh
-```
-
-Each CSV gets a `*_trials.csv` sibling plus a mean±std summary; plots draw error
-bars when `*_std` columns are present. Manifests record `host` + `trials`.
-
-Override the data location with `--sift-dir` or `SIFT_DIR=/path/to/sift`.
+---
 
 ## Layout
 
 ```
 DB_systems/
-├── run_bench.sh
-├── bench_suite.py
-├── regenerate_plots.py   # Re-render charts from saved CSVs
-├── validate_http.py
-├── bench_backends.py
-├── bench_tests.py        # Tests A–E
-├── bench_common.py
-├── bench_viz.py
-├── requirements.txt
-└── experiments/          # One timestamped folder per run
-    └── 2026-07-08_14-30-00/
-        ├── manifest.json
-        ├── results/*.csv
-        └── plots/*.png|pdf
+├── README.md                    ← you are here (paper → code map)
+├── run_unified_paper_bench.sh   ← §5 / §8 unified host re-run
+├── run_bench.sh / bench_*.py    ← attribution suite (Tests A–E)
+├── fetch_sift.sh                ← SIFT1M download
+├── research/                    ← one folder per paper mechanism (M1–V1, …)
+├── experiments/                 ← timestamped CSV/plots (local; gitignored)
+└── full_paper_plan/             ← optional long-track ideas (not short paper)
 ```
 
+---
 
+## Datasets
 
-## Quick start (simulated — no server)
+| `--dataset` | Vectors | D | Distance | Used in paper |
+|-------------|---------|---|----------|---------------|
+| `synthetic` | Gaussian, L2-normalized | 768 / 1536 | Dot | Attribution suite; high-D masked sweeps |
+| `sift1m` | SIFT1M | 128 | Euclid | Primary masked-distance figures |
 
 ```bash
-cd DB_systems
-chmod +x run_bench.sh
-./run_bench.sh
+./fetch_sift.sh   # ~161MB → data/sift/
 ```
 
-This runs entirely in-memory using NumPy cost models. Useful for validating the pipeline and generating chart templates before live cluster runs.
+---
 
-## Live evaluation (HTTP)
+## Root suite (attribution + motivation)
 
-Qdrant does **not** accept a `--port` CLI flag. Use a config file instead:
+| Test | Paper role | CSV | Figure-ish |
+|------|------------|-----|-----------|
+| **A** Latency vs Recall@K | Attribution recall-neutral | `latency_recall_d{D}.csv` | Fig. 2 |
+| **B** Throughput (QPS) | Scaling (supplementary) | `throughput_d{D}.csv` | — |
+| **C** Attribution depth *m* | In-DB vs post-query | `attribution_depth_d{D}.csv` | Fig. 3 |
+| **D** Focus rescore | Motivates masked traversal | `subspace_rescore_d{D}.csv` | Fig. 4 |
+| **E** Masked HNSW (legacy) | Early M1 probe | `masked_subspace_d{D}.csv` | prefer `option1_*` |
 
-```bash
-# Vanilla Qdrant on port 6335
-cat > /tmp/qdrant-6335.yaml <<'EOF'
-service:
-  http_port: 6335
-  grpc_port: 6336
-storage:
-  storage_path: /tmp/qdrant-6335-storage
-EOF
-cd ../qdrant && ./target/release/qdrant --config-path /tmp/qdrant-6335.yaml
+HTTP endpoints used by the harness are documented in `bench_backends.py`
+(`# [HTTP]` markers): `with_dims_explained`, `nearest.focus`, `focus.masked`, etc.
 
-# XQdrant on default port 6333
-cd ../XQdrant && ./target/release/xqdrant
+---
+
+## API fields the paper measures
+
+```json
+"focus": {
+  "dims": [...],
+  "masked": true,
+  "mask_from_layer": 1,
+  "verify": true,
+  "alpha": 0.25
+}
 ```
 
-Then run benchmarks:
-
-```bash
-cd DB_systems
-BENCH_MODE=http \
-QDRANT_URL=http://127.0.0.1:6335 \
-XQDRANT_URL=http://127.0.0.1:6333 \
-./run_bench.sh
-```
-
-For vanilla-vs-XQdrant on different binaries:
-
-```bash
-BENCH_MODE=http \
-QDRANT_URL=http://127.0.0.1:6335 \
-XQDRANT_URL=http://127.0.0.1:6333 \
-./run_bench.sh
-```
-
-**Pre-flight check** (recommended before a long HTTP run):
-
-```bash
-python3 validate_http.py \
-  --qdrant-url http://127.0.0.1:6335 \
-  --xqdrant-url http://127.0.0.1:6333
-
-# Or via the orchestrator:
-VALIDATE_HTTP=1 BENCH_MODE=http ./run_bench.sh --validate-http
-```
-
-
-
-## Benchmark tests
-
-
-| Test | Module | CSV output | Chart |
-|------|--------|------------|-------|
-| **A** Latency vs. Recall@K | `run_test_latency_recall` | `latency_recall_d{D}.csv` | Plot 1 |
-| **B** Throughput (QPS) | `run_test_throughput` | `throughput_d{D}.csv` | Plot 2 |
-| **C** Attribution depth m | `run_test_attribution_depth` | `attribution_depth_d{D}.csv` | Plot 3 |
-| **D** Focus rescore | `run_test_subspace_pruning` | `subspace_rescore_d{D}.csv` | Plot 4 |
-| **E** Masked HNSW | `run_test_masked_subspace` | `masked_subspace_d{D}.csv` | Plot 5 |
-
-Each run creates `experiments/<timestamp>/` with `manifest.json` recording mode, URLs, dimensions, and tests.
-
-
-
-
-### Parameters (defaults)
-
-- Vectors: N = 10,000 per dimension
-- Dimensions: D ∈ {768, 1536}
-- Queries: Q = 500
-- Seed: 42 (deterministic)
-- Warm-up: 1,000 unmeasured queries per test block
-- `ef_search` sweep: 16 → 512 (log-spaced)
-- Thread counts: 1, 2, 4, 8, 16 (capped at detected cores)
-- Attribution depths m: 1, 5, 10, 20, 50
-- Subspace ratios: 0.25, 0.5, 0.75
-
-
-
-## macOS notes
-
-| Topic | Behavior |
-|-------|----------|
-| **Page-cache drop** | Linux-only (`/proc/sys/vm/drop_caches`). Restart Qdrant between cold runs on macOS. |
-| **CPU pinning** | No native `taskset`. The script runs unpinned by default. Optional: `brew install util-linux` (provides `gtaskset`). |
-| **Matplotlib cache** | `run_bench.sh` sets `MPLCONFIGDIR=./.mplconfig` automatically. |
-| **Shell** | Tested with macOS default bash 3.2 (`set -u` empty-array safe). |
-
-No extra downloads are required for a basic run — only Python 3 and the pip packages in `requirements.txt` (installed automatically by `run_bench.sh`).
-
-## System isolation (`run_bench.sh`)
-
-- **Page-cache drop**: `sync; echo 3 > /proc/sys/vm/drop_caches` on Linux (prints manual `sudo` instructions if permissions fail).
-- **CPU pinning**: `taskset -c …` (fallback: `numactl --physcpubind=…`).
-- **Turbo Boost**: best-effort disable via `intel_pstate/no_turbo` when writable.
-
-Override pinned cores:
-
-```bash
-BENCH_CPU_CORES="4,5,6,7" ./run_bench.sh
-```
-
-
-
-## Hook points for real network calls
-
-In `bench_backends.py`, methods on `HttpBackend` are annotated with `# [HTTP]`:
-
-
-| Operation               | Endpoint                                                   |
-| ----------------------- | ---------------------------------------------------------- |
-| Collection create       | `PUT /collections/{name}`                                  |
-| Bulk upsert             | `PUT /collections/{name}/points?wait=true`                 |
-| Vanilla search          | `POST /collections/{name}/points/query`                    |
-| XQdrant attribution     | same + `with_dims_explained`                               |
-| Post-query vector fetch | `POST /collections/{name}/points` with `with_vector: true` |
-| Subspace / focus rescore | same + `query.nearest.focus` (no `masked`) |
-| Masked HNSW subspace | same + `focus.masked: true` |
-
-
-Simulated equivalents live in `SimulatedBackend` in the same file.
-
-## Selective runs
-
-```bash
-# Only Tests A and C, single dimension, fewer queries
-./run_bench.sh --tests A C --dimensions 768 --queries 100
-
-# CSV only, skip plots
-./run_bench.sh --skip-plots
-
-# Regenerate charts from a past experiment (no re-benchmark)
-python3 regenerate_plots.py --experiment experiments/2026-07-08_14-30-00
-python3 regenerate_plots.py --experiment experiments/2026-07-08_14-30-00 --plots 3 5
-```
-
-
-
-## Output metrics
-
-Each CSV records distribution statistics where applicable:
-
-- **p50 / p95 / p99** latencies (milliseconds), captured via `time.perf_counter_ns()`
-- **Recall@K** vs. brute-force ground truth (Test A)
-- **QPS** = total queries / wall-clock time (Test B)
-- **Speedup factor** = full-dimension p50 / subspace p50 (Tests D & E)
-- **Masked recall@K** = vs exact subspace brute-force ground truth (Test E)
-
-
-
-## Citation context
-
-When reporting results in a paper:
-
-- State whether runs used **simulated** or **live HTTP** backends.
-- For Test A recall curves, prefer **live HNSW** (HTTP mode) — the simulated backend uses an `ef_search`-sized candidate-pool approximation, not a full graph traversal.
-- Disclose hardware, `BENCH_CPU_CORES`, and cache-drop procedure in the experimental setup section.
-
+Plus request-root `with_dims_explained`, and env `XQDRANT_MASKED_KERNEL=gather|repack`
+for K1. Longer design notes: [`../docs/working.md`](../docs/working.md).

@@ -1,4 +1,4 @@
-%% XQdrant — EDBT 2027 short research paper
+%% XQdrant; EDBT 2027 short research paper
 %% Official EDBT A4 / ACM sigconf skeleton (see edbt-macros.tex).
 %% Compile:
 %%   pdflatex main && bibtex main && pdflatex main && pdflatex main
@@ -127,7 +127,7 @@ Production engines traverse HNSW graphs~\cite{malkov2018hnsw}, collapsing every
 comparison into a single scalar. This creates two gaps that motivate this paper.
 
 \textbf{Explainability.} Practitioners cannot see which coordinates drove a hit
-without fetching full vectors and recomputing per-dimension terms client-side —
+without fetching full vectors and recomputing per-dimension terms client-side;
 an expensive, egress-bound pattern.
 
 \textbf{Subspace routing.} Many workloads care about a dynamic focus set
@@ -140,7 +140,7 @@ specificity but, as we show, cannot reduce traversal cost.
 second rigorously. For attribution, \texttt{with\_dims\_explained} attaches
 exact top-$m$ coordinate terms to search results in-database. For subspace
 routing, \texttt{nearest.focus} with \texttt{masked=true} evaluates reduced
-distances \emph{during} HNSW traversal — not just after it — via a hybrid layer
+distances \emph{during} HNSW traversal; not just after it; via a hybrid layer
 cutoff, gather-based SIMD kernels, an optional verify/overfetch pass, and a
 full/masked score blend. Where the second contribution falls short of a
 latency win, we do not paper over it: we identify the mechanism (navigability
@@ -160,7 +160,7 @@ worth shipping.
   \item \textbf{Masked-distance HNSW traversal (mechanism-level negative
     result).} A hybrid layer-cutoff design that restores navigability where
     naive masking collapses it, but does not translate into end-to-end
-    speedup — and an explanation, grounded in coherence and kernel
+    speedup; and an explanation, grounded in coherence and kernel
     microbenchmarks, of why.
   \item \textbf{Coherence as a predictive diagnostic.} Subspace/full-space
     $k$-NN overlap predicts when a cheap verify pass can recover full-space
@@ -200,7 +200,7 @@ under the full metric and under focus set $\mathcal{F}$. We define
 to the diagnostic built around this quantity as \textbf{C1} in
 Section~\ref{sec:eval-coherence}. Coherence is the quantity that determines,
 independent of any particular traversal strategy, whether full-space neighbors
-can even in principle be recovered from subspace-guided search — it recurs
+can even in principle be recovered from subspace-guided search; it recurs
 throughout Section~\ref{sec:eval} as the explanatory variable behind several
 otherwise-surprising results.
 
@@ -209,7 +209,7 @@ otherwise-surprising results.
 \label{sec:attribution}
 
 XQdrant injects attribution at the collection coordinator after shard merge,
-with an early return when \texttt{with\_dims\_explained} is absent — zero
+with an early return when \texttt{with\_dims\_explained} is absent; zero
 overhead on the unmodified hot path. Per explained hit, Algorithm~\ref{alg:attribution}
 materializes $D$ terms and selects the top-$m$ by absolute contribution in
 average $\mathcal{O}(D)$ time via Rust's order-statistic selection
@@ -230,7 +230,7 @@ average $\mathcal{O}(D)$ time via Rust's order-statistic selection
 \end{figure}
 
 \texttt{nearest.focus} without masking still performs full HNSW preselection
-and rescores on $\mathcal{F}$ afterward — useful when ranking must respect a
+and rescores on $\mathcal{F}$ afterward; useful when ranking must respect a
 focus subspace, but, as Section~\ref{sec:eval-attr} shows, not a
 traversal-cost reduction. That gap is exactly what motivates masked
 traversal (Section~\ref{sec:masked}).
@@ -280,34 +280,34 @@ simultaneous \texttt{with\_dims\_explained} on masked paths, and fail-fast if
 \texttt{mask\_from\_layer}, \texttt{verify}, or \texttt{alpha} are set without
 \texttt{masked=true}.
 
-\subsection{M1 --- Naive All-Layer Masking}
+\subsection{M1: Naive All-Layer Masking}
 
 With \texttt{masked=true} and no cutoff, every HNSW comparison during descent
 uses only coordinates in $\mathcal{F}$. This is the cheapest semantic change to
-implement, and the one most likely to be tried first — which is precisely why
+implement, and the one most likely to be tried first; which is precisely why
 we report it as a cautionary baseline rather than a proposal: it destroys
 navigability whenever the focus metric disagrees with the full-space geometry
 the graph was built on (Section~\ref{sec:eval-m1}).
 
-\subsection{M2 --- Hybrid Layer Cutoff}
+\subsection{M2: Hybrid Layer Cutoff}
 
 Layer $\ell$ uses the masked scorer iff $\ell < L$ for cutoff
 $L ={}$\breakablecode{mask\_from\_layer}; otherwise full distance is used.
 $L{=}0$ recovers plain (unmasked) nearest search; a large $L$ recovers M1.
 The implementation builds dual raw scorers inside \texttt{FilteredScorer}
-and switches via \texttt{set\_layer} at layer boundaries — visited-set and
+and switches via \texttt{set\_layer} at layer boundaries; visited-set and
 heap logic are unchanged, so this composes with the rest of the query
 pipeline for free.
 
-\subsection{M3 --- Weighted Blend}
+\subsection{M3: Weighted Blend}
 
 On masked layers, score $= \alpha \cdot s_{\mathrm{full}} + (1-\alpha)\cdot
 s_{\mathrm{focus}}$; coarse (unmasked) layers are unaffected. Note that
 blending computes \emph{both} distances, so it cannot reduce arithmetic cost on
-its own — it exists purely as a routing-bias ablation to test whether it
+its own; it exists purely as a routing-bias ablation to test whether it
 recovers recall at a fixed cutoff more cheaply than raising $L$.
 
-\subsection{K1 --- Kernel Choice: Repack vs.\ Gather}
+\subsection{K1: Kernel Choice: Repack vs.\ Gather}
 
 Masked scoring can copy focus dims into a contiguous scratch buffer before
 calling the existing SIMD kernels (\emph{repack}), or gather them directly
@@ -316,12 +316,12 @@ elsewhere). We add the gather path, selectable via environment variable
 \breakablecode{XQDRANT\_MASKED\_KERNEL}, and treat kernel choice as
 orthogonal to M1--M3: any of the three can use either kernel.
 
-\subsection{V1 --- Verify and Overfetch}
+\subsection{V1: Verify and Overfetch}
 
 \texttt{verify=true} re-scores returned candidates with full distance after
 traversal, reusing the existing quantization-rescore hook. At overfetch
 $m{=}1$ (i.e., $\mathit{limit}=k$) this only reorders a size-$k$ set, so
-Recall@$k$ is provably unchanged — it is a correctness/ordering feature, not a
+Recall@$k$ is provably unchanged; it is a correctness/ordering feature, not a
 recall-recovery one. Overfetch with $m>1$ ($\mathit{limit}=m\cdot k$, keep
 top-$k$ after full rescore) turns masked traversal into a candidate
 \emph{filter} and can recover recall, at a latency cost we quantify in
@@ -372,8 +372,8 @@ in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
 ($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits
 at $6.87$--$7.03$\,ms ($\approx 1.78\times$). This confirms attribution as a
 clean systems win. But Figure~\ref{fig:subspace-rescore} shows that
-\texttt{nearest.focus} \emph{rescoring} — the natural first attempt at
-subspace search, using the same full-preselection machinery — yields speedup
+\texttt{nearest.focus} \emph{rescoring}; the natural first attempt at
+subspace search, using the same full-preselection machinery; yields speedup
 $<1$ ($0.80$--$0.84$). Rescoring reduces the dimensionality of the arithmetic
 but not the traversal it depends on. This negative result is what motivates
 attacking the traversal itself, which is the subject of the rest of this
@@ -434,7 +434,7 @@ cutoffs $L\geq 1$ recover $0.90$--$0.995$ mean recall (subspace-restricted
 ground truth; across-trial std $\le 0.004$), while $L{=}0$ tracks the low
 coherence floor. On high-$D$ synthetic data the same cutoff lifts
 otherwise-collapsed cells (e.g., $D{=}768$, ratio 0.25:
-$\sim$0.01 $\rightarrow$ $\sim$0.20) but plateaus near 0.15--0.22 — a ceiling
+$\sim$0.01 $\rightarrow$ $\sim$0.20) but plateaus near 0.15--0.22; a ceiling
 we explain via coherence in Section~\ref{sec:eval-coherence}.
 
 Critically, \textbf{end-to-end speedup vs.\ full search remains below 1 in
@@ -477,7 +477,7 @@ microbenchmarks. Re-running the M2 sweep with gather instead of repack leaves
 recall unchanged and still produces \textbf{zero} end-to-end cells above
 $1\times$. This isolates the bottleneck to graph traversal overhead
 (candidate heap management, visited-set bookkeeping, memory access to
-non-contiguous graph pages) rather than the per-comparison arithmetic — the
+non-contiguous graph pages) rather than the per-comparison arithmetic; the
 kernel is not the limiting factor, so faster kernels alone cannot close the
 gap identified in Section~\ref{sec:eval-m2}.
 
@@ -526,12 +526,12 @@ the verification pass in Section~\ref{sec:eval-verify} can and cannot help.
 
 Given that M2 cannot reach full-space recall on its own, can a post-traversal
 verification pass close the gap? At overfetch $m{=}1$, masked and verified
-Recall@10 are identical, as predicted in Section~\ref{sec:masked} — reordering
+Recall@10 are identical, as predicted in Section~\ref{sec:masked}; reordering
 a fixed candidate set cannot change which candidates it contains. At $m{=}8$ on
 SIFT with hybrid $L{=}1$ (high coherence regime), full-space recall rises
 substantially: $0.26\rightarrow 0.66$ at ratio 0.5 and $0.45\rightarrow 0.89$ at
 ratio 0.75 (Figure~\ref{fig:verify}), but at a cost of roughly $+45$\,ms p50
-($\sim$1.5\,ms $\rightarrow$ $\sim$46\,ms) — overfetching by $8\times$ and
+($\sim$1.5\,ms $\rightarrow$ $\sim$46\,ms); overfetching by $8\times$ and
 fully rescoring is not cheap. On high-$D$ synthetic data (low coherence),
 recall stays $\leq \sim$0.19 even at $m{=}8$: exactly the outcome
 Section~\ref{sec:eval-coherence} predicts, since no amount of overfetch
@@ -625,16 +625,16 @@ serving engine and evaluate end-to-end latency, not only index throughput.
 \paragraph{Explainable AI.} SHAP and LIME~\cite{lundberg2017shap,ribeiro2016lime}
 approximate model behavior via sampling or local surrogates.
 Unlike those surrogate explainers, we exploit additive metric structure for
-deterministic, zero-variance attributions aligned with the engine's own ranking
-— closer to in-database OLAP rollups~\cite{gray1998data} than to sampling-based
+deterministic, zero-variance attributions aligned with the engine's own ranking, 
+closer to in-database OLAP rollups~\cite{gray1998data} than to sampling-based
 XAI.
 
 \paragraph{Dimension reduction and projected indexes.} Static projections or
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
 an existing full-dimensional HNSW index.
-Unlike building a dedicated auxiliary index per focus set — which would sidestep
+Unlike building a dedicated auxiliary index per focus set; which would sidestep
 the navigability problem of Section~\ref{sec:eval-m1} but only for a registered
-palette of subspaces — we characterize what query-time masking of an unmodified
+palette of subspaces; we characterize what query-time masking of an unmodified
 full-space graph can and cannot deliver, and leave projected indexes to future
 work (Section~\ref{sec:discussion}).
 

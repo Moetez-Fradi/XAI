@@ -1,4 +1,9 @@
 # XQdrant: Path to a 12-Page Full Paper
+
+> **Not required for the short paper.** Reproducing EDBT short-track results:
+> start at [`../README.md`](../README.md) (paper → folder map) and
+> [`../research/README.md`](../research/README.md). This file is optional
+> full-track expansion planning only.
  
 **Current state (short track):** ~7-page ACM sigconf draft in `deliverable/`
 with unified-host T=5 mean±std for the primary attribution + SIFT masked

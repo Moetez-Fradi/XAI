@@ -16,7 +16,9 @@ data/
 .env.production.local
 
 # Experiment outputs (regenerable; keep scripts under research/)
-experiments/
+# Track only the index README so paper readers know the naming scheme.
+experiments/*
+!experiments/README.md
 
 # Superseded by ../../deliverable/ — do not re-add
 paper/

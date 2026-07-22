@@ -1,29 +1,32 @@
-# Step 0 — Baseline suite (ALREADY DONE) — reproducibility pointer
+# Attribution suite pointer (`step0_baseline_done`)
 
-These metrics are already produced by the **reusable** suite at the `DB_systems/` root — nothing
-here needs to be re-created. This folder only records *which reusable code produced which metric*
-so provenance is clear when summarizing.
+**Paper:** §3 (design) · §5.2 (attribution + focus-rescore motivation) · Table 2 top rows  
+**Code:** reusable root suite — nothing unique lives in this folder.
 
-Re-run all baselines:
+This directory only records *which* root-suite tests produced the attribution /
+motivation figures so provenance stays clear.
+
+Re-run:
 
 ```bash
-cd DB_systems
-BENCH_MODE=http QDRANT_URL=http://127.0.0.1:6335 XQDRANT_URL=http://127.0.0.1:6333 ./run_bench.sh
+cd ../..   # DB_systems/
+BENCH_MODE=http QDRANT_URL=http://127.0.0.1:6335 XQDRANT_URL=http://127.0.0.1:6333 \
+  ./run_bench.sh --tests A C D --trials 5
+
+# or the unified paper driver (includes A/C/D + masked suite)
+./run_unified_paper_bench.sh
 ```
 
-Existing results live under `DB_systems/experiments/2026-07-07_http_baseline/`.
+| Test | Paper role | Runner (`bench_tests.py`) | CSV | Approx. figure |
+|------|------------|---------------------------|-----|----------------|
+| A | Attribution recall-neutral vs vanilla | `run_test_latency_recall` | `latency_recall_d{D}.csv` | Fig. 2 |
+| B | Throughput (supplementary) | `run_test_throughput` | `throughput_d{D}.csv` | — |
+| C | In-DB vs post-query attribution depth | `run_test_attribution_depth` | `attribution_depth_d{D}.csv` | Fig. 3 |
+| D | Focus rescoring speedup &lt; 1 | `run_test_subspace_pruning` | `subspace_rescore_d{D}.csv` | Fig. 4 |
+| E | Early masked probe | `run_test_masked_subspace` | `masked_subspace_d{D}.csv` | prefer **M1** script |
 
-| Test | Metric | Runner (`bench_tests.py`) | CSV | Plot (`bench_viz.py`) | Proves |
-|------|--------|---------------------------|-----|-----------------------|--------|
-| A | latency vs recall parity | `run_test_latency_recall` | `latency_recall_d{D}.csv` | `plot1_latency_recall` | Explainability is free vs vanilla |
-| B | throughput (QPS) | `run_test_throughput` | `throughput_d{D}.csv` | `plot2_throughput` | Scales under concurrency |
-| C | attribution depth m | `run_test_attribution_depth` | `attribution_depth_d{D}.csv` | `plot3_attribution_depth` | In-DB attribution beats client post-query |
-| D | focus rescore speedup | `run_test_subspace_pruning` | `subspace_rescore_d{D}.csv` | `plot4_subspace_rescore` | Rescore path has speedup < 1 (motivates masking) |
-| E | masked HNSW speedup + recall | `run_test_masked_subspace` | `masked_subspace_d{D}.csv` | `plot5_masked_subspace` | Option 1 real speedup vs recall cost |
+Test E already exercises `focus.masked` (**M1**). The dedicated
+[`../option1_naive_masked/`](../option1_naive_masked/) runner extends the ratio sweep
+against **full-space** ground truth for §5.3.
 
-**Note:** Test E already exercises the shipped `focus.masked` (= Option 1). The `research/option1_*`
-script extends it to the wider ratio sweep `{0.1 … 1.0}` against full-vector ground truth and lands
-results in a self-describing `option1_naive_masked` folder.
-
-Rust unit tests backing these (see `working.md`): calculator (8), focus rescore (5), masked scorer (3),
-OpenAPI integration.
+See: [`../README.md`](../README.md) · [`../../README.md`](../../README.md).

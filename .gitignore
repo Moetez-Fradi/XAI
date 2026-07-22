@@ -19,7 +19,7 @@ __pycache__/
 *.pyc
 
 # Local scratch / legacy paths
-experiments/
+/experiments/
 exec/
 
 # Stale root PDF copy (canonical build lives in deliverable/)

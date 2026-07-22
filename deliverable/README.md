@@ -27,4 +27,6 @@ Auxiliary TeX files (`*.aux`, `*.log`, `*.cut`, …) are gitignored; `main.pdf` 
 2. Populate the artifact repo linked in §Artifacts (or attach a CMT zip).
 3. Verify body content ends by page 6 (Artifacts + refs may continue).
 
-Research harness: `../DB_systems/`. Naming glossary: `../docs/README.md`.
+Research harness (paper → folders): [`../DB_systems/README.md`](../DB_systems/README.md).  
+Mechanism design notes: [`../xqdrant_docs/`](../xqdrant_docs/).  
+API / milestone scratch: [`../docs/`](../docs/).
