@@ -1,0 +1,112 @@
+# Paper-scale download defaults (PSB-level corpus).
+# Pilot smoke: ./run_downloads.sh --pilot
+
+mode: paper  # paper | pilot (overridden by CLI)
+
+scop:
+  version: "2.08-stable"
+  files:
+    - name: dir.cla.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.cla.scope.2.08-stable.txt
+    - name: dir.des.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.des.scope.2.08-stable.txt
+    - name: dir.hie.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.hie.scope.2.08-stable.txt
+  # ASTRAL sequence subsets (domain sequences; useful before CIF parsing)
+  astral:
+    - name: astral-scopedom-seqres-gd-sel-gs-bib-95-2.08.fa
+      url: https://scop.berkeley.edu/downloads/astral/astral-scopedom-seqres-gd-sel-gs-bib-95-2.08.fa
+    - name: astral-scopedom-seqres-gd-sel-gs-bib-40-2.08.fa
+      url: https://scop.berkeley.edu/downloads/astral/astral-scopedom-seqres-gd-sel-gs-bib-40-2.08.fa
+
+cath:
+  files:
+    - name: cath-b-newest-all.gz
+      url: https://download.cathdb.info/cath/releases/daily-release/newest/cath-b-newest-all.gz
+    - name: cath-b-newest-names-all.gz
+      url: https://download.cathdb.info/cath/releases/daily-release/newest/cath-b-newest-names-all.gz
+    # Pinned latest-release domain list (more stable for corpus_lock.json)
+    - name: cath-domain-list.txt
+      url: https://download.cathdb.info/cath/releases/latest-release/cath-classification-data/cath-domain-list.txt
+
+pdb:
+  # Unique PDB entries stratified by SCOPe fold (class.fold).
+  # ~10k structures → enough for 5–10k chains + held-out after filtering.
+  paper_unique_pdbs: 10000
+  pilot_unique_pdbs: 200
+  # Prefer compressed mmCIF (much smaller on disk/network)
+  base_url: https://files.rcsb.org/download
+  format: cif.gz  # cif.gz | cif | pdb
+  sleep_s: 0.03
+  max_retries: 4
+  stratify_by_fold: true
+  random_seed: 42
+
+uniprot:
+  sifts:
+    - name: pdb_chain_uniprot.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_uniprot.csv.gz
+    - name: pdb_chain_go.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_go.csv.gz
+    - name: pdb_chain_enzyme.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_enzyme.csv.gz
+  # Full Swiss-Prot (sequences + annotations flat file) — paper baseline
+  sprot_dat_gz: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz
+  sprot_fasta_gz: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+  # Per-accession JSON via batch API for PDB-mapped IDs (0 = all mapped)
+  paper_max_accessions: 0
+  pilot_max_accessions: 500
+  batch_size: 100
+  sleep_s: 0.15
+
+pfam:
+  files:
+    - name: Pfam-A.clans.tsv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz
+    - name: pdbmap.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/pdbmap.gz
+    - name: Pfam-A.regions.tsv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.regions.tsv.gz
+
+thermo:
+  meso_species: ECOLI
+  thermo_species: THERM
+  # Expanded seed set for Experiment D (E. coli enzymes with known thermo orthologs)
+  seed_uniprot:
+    - P0A6F3  # GroEL
+    - P0A7Z4  # RpoA
+    - P0A9P0  # GapA
+    - P0A6E6  # AtpA
+    - P0A6B7  # Adk
+    - P0A9Q7  # Pgk
+    - P0A6P9  # Eno
+    - P0A7D4  # Pyruvate kinase PykF
+    - P0AE08  # AhpC
+    - P0A9P6  # LdhA
+    - P0A6T1  # GltA
+    - P0A6E4  # AtpD
+    - P0A8T7  # NusG
+    - P0A7R5  # RplA
+    - P0A7W1  # RpsE
+  paper_max_pairs: 200
+  pilot_max_pairs: 50
+
+esm2:
+  repo_id: facebook/esm2_t33_650M_UR50D
+  local_dir: models/esm2_t33_650M_UR50D
+  # Skip TF duplicate (~2.6 GB) — PyTorch/safetensors only
+  allow_patterns:
+    - "*.json"
+    - "*.txt"
+    - "*.model"
+    - "*.tiktoken"
+    - "model.safetensors"
+    - "pytorch_model.bin"
+    - "vocab.txt"
+    - "special_tokens_map.json"
+    - "tokenizer*"
+    - "config.json"
+  ignore_patterns:
+    - "tf_model.h5"
+    - "flax_model.msgpack"
+    - "rust_model.ot"

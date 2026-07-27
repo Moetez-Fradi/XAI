@@ -1,0 +1,20 @@
+# All paths are relative to Bioinformatics/ unless absolute.
+root: .
+
+data_raw: data/raw
+data_processed: data/processed
+data_annotations: data/annotations
+data_baselines: data/baselines
+embeddings: embeddings
+models: models
+tools: tools
+results: results
+
+scop_dir: data/raw/scop
+cath_dir: data/raw/cath
+pdb_dir: data/raw/pdb
+uniprot_dir: data/raw/uniprot
+pfam_dir: data/raw/pfam
+thermo_dir: data/raw/thermo
+sifts_dir: data/raw/sifts
+esm2_dir: models/esm2_t33_650M_UR50D

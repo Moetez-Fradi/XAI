@@ -1,0 +1,34 @@
+# Local env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Large / regenerable data
+data/raw/
+data/processed/
+data/annotations/
+data/baselines/
+embeddings/
+models/
+results/
+tools/
+*.pdb
+*.cif
+*.mmcif
+*.ent
+*.gz
+!configs/**
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Notebooks checkpoints
+notebooks/.ipynb_checkpoints/

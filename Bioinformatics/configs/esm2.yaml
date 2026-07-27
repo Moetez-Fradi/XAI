@@ -1,0 +1,8 @@
+model_id: facebook/esm2_t33_650M_UR50D
+local_dir: models/esm2_t33_650M_UR50D
+# Primary embedding settings for later embed_esm2.py
+layer: last          # or integer layer index
+pooling: mean        # mean | cls
+max_seq_len: 1024
+batch_size: 8
+device: auto         # auto | cpu | mps | cuda
