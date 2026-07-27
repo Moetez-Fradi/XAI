@@ -4,9 +4,9 @@
 %%   pdflatex main && bibtex main && pdflatex main && pdflatex main
 %%
 %% BEFORE SUBMISSION:
-%%  - replace author / affiliation / ORCID placeholders with real values
+%%  - replace author / affiliation placeholders with real values
 %%    (EDBT is single-anonymous: names MUST appear on the PDF)
-%%  - confirm every author is registered on CMT with ORCID
+%%  - confirm every author is registered on CMT
 %%  - ensure title still starts with "[Short Paper]"
 %%  - upload artifacts zip OR a no-access-monitoring repo link on CMT
 %%  - keep body ≤ 6 pages; Artifacts + references are unlimited
@@ -44,7 +44,7 @@
 \title{[Short Paper] XQdrant: In-Database Attribution and Masked-Distance
   Subspace Search over HNSW}
 
-%% EDBT is single-anonymous: include real names/affiliations/ORCID before submit.
+%% EDBT is single-anonymous: include real names/affiliations before submit.
 \author{Moetez Fradi}
 \email{moetez.fradi@insat.ucar.tn}
 \affiliation{%
@@ -127,7 +127,7 @@ Production engines traverse HNSW graphs~\cite{malkov2018hnsw}, collapsing every
 comparison into a single scalar. This creates two gaps that motivate this paper.
 
 \textbf{Explainability.} Practitioners cannot see which coordinates drove a hit
-without fetching full vectors and recomputing per-dimension terms client-side;
+without fetching full vectors and recomputing per-dimension terms client-side,
 an expensive, egress-bound pattern.
 
 \textbf{Subspace routing.} Many workloads care about a dynamic focus set
@@ -140,7 +140,7 @@ specificity but, as we show, cannot reduce traversal cost.
 second rigorously. For attribution, \texttt{with\_dims\_explained} attaches
 exact top-$m$ coordinate terms to search results in-database. For subspace
 routing, \texttt{nearest.focus} with \texttt{masked=true} evaluates reduced
-distances \emph{during} HNSW traversal; not just after it; via a hybrid layer
+distances \emph{during} HNSW traversal, not just after it, via a hybrid layer
 cutoff, gather-based SIMD kernels, an optional verify/overfetch pass, and a
 full/masked score blend. Where the second contribution falls short of a
 latency win, we do not paper over it: we identify the mechanism (navigability
@@ -209,7 +209,7 @@ otherwise-surprising results.
 \label{sec:attribution}
 
 XQdrant injects attribution at the collection coordinator after shard merge,
-with an early return when \texttt{with\_dims\_explained} is absent; zero
+with an early return when \texttt{with\_dims\_explained} is absent, and zero
 overhead on the unmodified hot path. Per explained hit, Algorithm~\ref{alg:attribution}
 materializes $D$ terms and selects the top-$m$ by absolute contribution in
 average $\mathcal{O}(D)$ time via Rust's order-statistic selection
@@ -230,7 +230,7 @@ average $\mathcal{O}(D)$ time via Rust's order-statistic selection
 \end{figure}
 
 \texttt{nearest.focus} without masking still performs full HNSW preselection
-and rescores on $\mathcal{F}$ afterward; useful when ranking must respect a
+and rescores on $\mathcal{F}$ afterward, useful when ranking must respect a
 focus subspace, but, as Section~\ref{sec:eval-attr} shows, not a
 traversal-cost reduction. That gap is exactly what motivates masked
 traversal (Section~\ref{sec:masked}).
@@ -284,7 +284,7 @@ simultaneous \texttt{with\_dims\_explained} on masked paths, and fail-fast if
 
 With \texttt{masked=true} and no cutoff, every HNSW comparison during descent
 uses only coordinates in $\mathcal{F}$. This is the cheapest semantic change to
-implement, and the one most likely to be tried first; which is precisely why
+implement, and the one most likely to be tried first, which is precisely why
 we report it as a cautionary baseline rather than a proposal: it destroys
 navigability whenever the focus metric disagrees with the full-space geometry
 the graph was built on (Section~\ref{sec:eval-m1}).
@@ -372,8 +372,8 @@ in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
 ($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits
 at $6.87$--$7.03$\,ms ($\approx 1.78\times$). This confirms attribution as a
 clean systems win. But Figure~\ref{fig:subspace-rescore} shows that
-\texttt{nearest.focus} \emph{rescoring}; the natural first attempt at
-subspace search, using the same full-preselection machinery; yields speedup
+\texttt{nearest.focus} \emph{rescoring}, the natural first attempt at
+subspace search, using the same full-preselection machinery, yields speedup
 $<1$ ($0.80$--$0.84$). Rescoring reduces the dimensionality of the arithmetic
 but not the traversal it depends on. This negative result is what motivates
 attacking the traversal itself, which is the subject of the rest of this
@@ -632,9 +632,9 @@ XAI.
 \paragraph{Dimension reduction and projected indexes.} Static projections or
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
 an existing full-dimensional HNSW index.
-Unlike building a dedicated auxiliary index per focus set; which would sidestep
+Unlike building a dedicated auxiliary index per focus set, which would sidestep
 the navigability problem of Section~\ref{sec:eval-m1} but only for a registered
-palette of subspaces; we characterize what query-time masking of an unmodified
+palette of subspaces, we characterize what query-time masking of an unmodified
 full-space graph can and cannot deliver, and leave projected indexes to future
 work (Section~\ref{sec:discussion}).
 
@@ -642,9 +642,9 @@ work (Section~\ref{sec:discussion}).
 \section{Discussion and Conclusion}
 \label{sec:discussion}
 
-\paragraph{Shipping verdict.} Keep in-database attribution and M2; keep K1 as
-an implementation detail; ship V1 only with overfetch on coherent data
-(Section~\ref{sec:eval-verify}); do not ship M3 ($\alpha{=}0$ is M2).
+\paragraph{Shipping verdict.} Keep in-database attribution and M2, keep K1 as
+an implementation detail, ship V1 only with overfetch on coherent data
+(Section~\ref{sec:eval-verify}), and do not ship M3 ($\alpha{=}0$ is M2).
 
 \paragraph{Why no e2e speedup.} Section~\ref{sec:eval-kernel} isolates the
 bottleneck to I/O and candidate management, not masked arithmetic. Query-time
