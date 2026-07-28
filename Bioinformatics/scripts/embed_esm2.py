@@ -75,7 +75,12 @@ def main() -> int:
         default="all",
         help="Which split to embed (default: all)",
     )
-    ap.add_argument("--limit", type=int, default=None, help="Max chains (smoke default 32)")
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Max chains (default: all rows in the chosen corpus/split)",
+    )
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--device", default=None)
     ap.add_argument(
@@ -117,11 +122,7 @@ def main() -> int:
         outdir = resolve_path("embeddings/smoke" if smoke else "embeddings/esm2_t33_650M")
     ensure_dir(outdir)
 
-    limit = args.limit
-    if smoke and limit is None:
-        limit = 32
-
-    rows = load_chains(csv_path, split=args.split, limit=limit)
+    rows = load_chains(csv_path, split=args.split, limit=args.limit)
     if not rows:
         print("ERROR: no chains to embed.", file=sys.stderr)
         return 1

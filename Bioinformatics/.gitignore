@@ -17,6 +17,7 @@ embeddings/
 models/
 results/
 tools/
+data/xqdrant_storage/
 *.pdb
 *.cif
 *.mmcif

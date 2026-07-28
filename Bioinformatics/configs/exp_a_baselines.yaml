@@ -1,0 +1,25 @@
+# Exp A retrieval baselines (run in parallel with Exp B; CPU-bound).
+
+baselines_dir: data/baselines/exp_a
+results_dir: results/exp_a/baselines
+smoke_results_dir: results/exp_a_smoke/baselines
+
+limits: [1, 5, 10]
+bootstrap: 1000
+bootstrap_seed: 42
+
+blast:
+  evalue: 10
+  max_target_seqs: 50
+  num_threads: 4
+
+foldseek:
+  sensitivity: 9.5
+  max_seqs: 50
+  threads: 4
+
+tmalign:
+  # Re-rank Foldseek candidates by TM-score (full all-vs-train TM-align is intractable).
+  candidates_from: foldseek
+  max_candidates: 20
+  threads: 4  # parallel queries (each TMalign is single-thread)

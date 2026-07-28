@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 LIMIT_PDBS=40
-EMBED_LIMIT=32
+EMBED_LIMIT=""   # empty = embed all smoke corpus chains (needed for Exp A holdout)
 DEVICE_ARGS=()
 
 while [ $# -gt 0 ]; do
@@ -46,9 +46,15 @@ echo "==> Smoke corpus (≤${LIMIT_PDBS} PDBs) → data/processed/corpus_smoke/"
 "$PY" scripts/build_corpus.py --smoke --limit-pdbs "$LIMIT_PDBS"
 
 echo ""
-echo "==> Smoke embed (≤${EMBED_LIMIT} chains) → embeddings/smoke/"
-"$PY" scripts/embed_esm2.py --smoke --limit "$EMBED_LIMIT" \
-  ${DEVICE_ARGS[@]+"${DEVICE_ARGS[@]}"}
+if [ -n "$EMBED_LIMIT" ]; then
+  echo "==> Smoke embed (≤${EMBED_LIMIT} chains) → embeddings/smoke/"
+  "$PY" scripts/embed_esm2.py --smoke --limit "$EMBED_LIMIT" \
+    ${DEVICE_ARGS[@]+"${DEVICE_ARGS[@]}"}
+else
+  echo "==> Smoke embed (all corpus_smoke chains) → embeddings/smoke/"
+  "$PY" scripts/embed_esm2.py --smoke \
+    ${DEVICE_ARGS[@]+"${DEVICE_ARGS[@]}"}
+fi
 
 echo ""
 "$PY" - <<'PY'
@@ -69,7 +75,10 @@ print(f"  corpus chains: {lock['n_chains']} (train={lock['n_train']} holdout={lo
 print(f"  embeddings:    {vec.shape}  dim={meta['dim']}  device={meta['device']}")
 print(f"  sample ids:    {', '.join(ids[:5])}")
 print("")
-print("Next (full paper corpus — long):")
-print("  .venv/bin/python scripts/build_corpus.py")
-print("  .venv/bin/python scripts/embed_esm2.py          # after corpus; needs GPU recommended")
+print("Next:")
+print("  ./start_xqdrant.sh --daemon")
+print("  ./run_exp_a_smoke.sh")
+print("Then paper index + Exp A:")
+print("  .venv/bin/python scripts/index_xqdrant.py --recreate")
+print("  .venv/bin/python scripts/exp_a_retrieval.py")
 PY

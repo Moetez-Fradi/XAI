@@ -1,0 +1,27 @@
+# XQdrant server + collection settings for protein ESM2 embeddings.
+
+url: http://127.0.0.1:6333
+# Prefer the fork binary built in this monorepo:
+binary: ../XQdrant/target/release/xqdrant
+storage_path: data/xqdrant_storage
+
+collection: proteins_esm2_650m
+smoke_collection: proteins_esm2_650m_smoke
+
+distance: Cosine
+dim: 1280
+
+upsert_batch_size: 128
+# Attribution: top contributing dims returned per hit
+dims_explained_top: 32
+
+# Experiment A defaults
+exp_a:
+  query_split: holdout
+  index_filter_split: train   # search only train neighbors
+  limits: [1, 5, 10]
+  max_queries_paper: 0        # 0 = all holdout
+  max_queries_smoke: 20
+  results_dir: results/exp_a
+  smoke_results_dir: results/exp_a_smoke
+  # Checkpoints: results/.../checkpoints/queries.jsonl (resume unless --restart)

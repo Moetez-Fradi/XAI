@@ -86,9 +86,59 @@ source .venv/bin/activate
 # 6) Full embed (slow on CPU; prefer CUDA)
 .venv/bin/python scripts/embed_esm2.py
 # .venv/bin/python scripts/embed_esm2.py --device cuda --batch-size 8
+
+# 7) Start XQdrant fork (attribution-capable)
+./start_xqdrant.sh --daemon
+
+# 8) Smoke index + Experiment A (retrieval + dims_explained)
+./run_exp_a_smoke.sh
+
+# 9) Paper index + Experiment A (resumes checkpoints by default)
+.venv/bin/python scripts/index_xqdrant.py          # skip if already 22118; --restart to rebuild
+.venv/bin/python scripts/exp_a_retrieval.py         # --restart to wipe results/exp_a
 ```
 
-Smoke writes `data/processed/corpus_smoke/` + `embeddings/smoke/`.  
-Paper writes `data/processed/corpus/` (with `corpus_lock.json`) + `embeddings/esm2_t33_650M/`.
+### Experiment A artifacts
 
-Still to add later: `index_xqdrant.py`, Experiments A–F.
+| Path | Contents |
+|------|----------|
+| `data/processed/xqdrant/<coll>_manifest.json` | collection provenance + embedding fingerprint |
+| `data/processed/xqdrant/<coll>_id_map.tsv` | `point_id → chain_id` |
+| `data/processed/xqdrant/<coll>_checkpoint.json` | upsert resume cursor |
+| `results/exp_a/run_config.json` | exact run settings + corpus/embed refs |
+| `results/exp_a/query_list.txt` | holdout queries |
+| `results/exp_a/checkpoints/queries.jsonl` | **per-query checkpoint** (neighbors + `dims_explained`) |
+| `results/exp_a/metrics.json` | Recall/Precision + bootstrap CIs |
+| `results/exp_a/per_query.json` | full final dump |
+
+Resume is default; pass `--restart` (index: also `--recreate`) to start over.
+
+### Experiment B (attribution validity)
+
+```bash
+export PATH="$PWD/tools/mamba/envs/bio-tools/bin:$PATH"
+
+# Smoke
+./run_exp_b_smoke.sh
+
+# Paper (DSSP can take a while; resumes skipped JSONs)
+.venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000
+.venv/bin/python scripts/exp_b_attribution.py
+# optional later for PyMOL/Exp E:
+# .venv/bin/python scripts/annotate_dssp.py --from-exp-a --store-residues
+```
+
+### Exp A baselines (parallel-safe with Exp B)
+
+```bash
+source tools/env_linux.sh
+
+# While B runs — start with FASTA baselines (no structure extract):
+./run_exp_a_baselines.sh --fast-only
+
+# Full baselines (chain PDBs + Foldseek + TM-align re-rank):
+./run_exp_a_baselines.sh
+# comparison → results/exp_a/baselines/comparison.tsv
+```
+
+Still to add later: Experiments C–F.
