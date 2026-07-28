@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -144,6 +146,143 @@ class BatchProgress:
         )
 
 
+def _download_with_curl(
+    url: str,
+    tmp: Path,
+    *,
+    timeout: int,
+    max_retries: int,
+    user_agent: str,
+    quiet: bool,
+    label: str,
+) -> None:
+    """Prefer curl: resume (-C -), retries, and better FTP/HTTP stall handling."""
+    cmd = [
+        "curl",
+        "-L",
+        "--fail",
+        "--retry",
+        str(max(max_retries, 5)),
+        "--retry-delay",
+        "5",
+        "--retry-all-errors",
+        "--connect-timeout",
+        str(min(timeout, 60)),
+        "--max-time",
+        "0",  # no overall cap; large Pfam/Swiss-Prot need hours
+        "-A",
+        user_agent,
+        "-C",
+        "-",
+        "-o",
+        str(tmp),
+        url,
+    ]
+    if quiet:
+        cmd.insert(1, "-sS")
+    else:
+        cmd.insert(1, "--progress-bar")
+        print(f"  GET (curl resume) {label}", flush=True)
+    proc = subprocess.run(cmd, check=False)
+    if proc.returncode != 0:
+        raise OSError(f"curl failed ({proc.returncode}) for {url}")
+    if not tmp.exists() or tmp.stat().st_size <= 0:
+        raise OSError(f"curl produced empty file for {url}")
+
+
+def _download_with_urllib(
+    url: str,
+    tmp: Path,
+    *,
+    timeout: int,
+    max_retries: int,
+    user_agent: str,
+    quiet: bool,
+    label: str,
+) -> None:
+    """urllib fallback with HTTP Range resume + Content-Length checks."""
+    last_err: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            existing = tmp.stat().st_size if tmp.exists() else 0
+            headers = {"User-Agent": user_agent}
+            if existing > 0:
+                headers["Range"] = f"bytes={existing}-"
+            if not quiet:
+                resume = f" resume@{format_bytes(existing)}" if existing else ""
+                print(f"  GET [{attempt}/{max_retries}] {label}{resume}", flush=True)
+            req = Request(url, headers=headers)
+            with urlopen(req, timeout=timeout) as resp:
+                status = getattr(resp, "status", None) or resp.getcode()
+                total_hdr = resp.headers.get("Content-Length")
+                total_n = int(total_hdr) if total_hdr and total_hdr.isdigit() else None
+                # 206 Partial Content: Content-Length is remaining bytes
+                if status == 206 and total_n is not None:
+                    expected_final = existing + total_n
+                    mode = "ab"
+                    got = existing
+                elif status == 200 and existing > 0:
+                    # Server ignored Range — restart
+                    mode = "wb"
+                    got = 0
+                    expected_final = total_n
+                else:
+                    mode = "wb" if existing == 0 else "ab"
+                    got = 0 if mode == "wb" else existing
+                    expected_final = total_n if mode == "wb" else (
+                        existing + total_n if total_n is not None else None
+                    )
+                t0 = time.time()
+                last_ui = 0.0
+                with tmp.open(mode) as out:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        got += len(chunk)
+                        now = time.time()
+                        if (not quiet) and (now - last_ui) >= 0.5:
+                            elapsed = max(now - t0, 1e-6)
+                            speed = (got - (existing if mode == "ab" else 0)) / elapsed
+                            if expected_final:
+                                pct = 100.0 * got / expected_final
+                                eta = (
+                                    (expected_final - got) / speed
+                                    if speed > 0
+                                    else float("inf")
+                                )
+                                msg = (
+                                    f"\r    {label}: {pct:5.1f}% "
+                                    f"{format_bytes(got)}/{format_bytes(expected_final)} "
+                                    f"@ {format_bytes(speed)}/s ETA {format_duration(eta)}   "
+                                )
+                            else:
+                                msg = (
+                                    f"\r    {label}: {format_bytes(got)} "
+                                    f"@ {format_bytes(speed)}/s (size unknown)   "
+                                )
+                            sys.stdout.write(msg)
+                            sys.stdout.flush()
+                            last_ui = now
+                if not quiet and expected_final:
+                    sys.stdout.write("\n")
+                final_size = tmp.stat().st_size
+                if expected_final is not None and final_size != expected_final:
+                    raise OSError(
+                        f"incomplete download of {label}: got {final_size} bytes, "
+                        f"expected {expected_final}"
+                    )
+            return
+        except (HTTPError, URLError, TimeoutError, OSError) as e:
+            last_err = e
+            if not quiet:
+                print(f"  warn: {e}", file=sys.stderr)
+            # Keep .partial for resume on next attempt
+            time.sleep(min(2**attempt, 30))
+    raise RuntimeError(f"Failed to download {url}: {last_err}")
+
+
 def download_file(
     url: str,
     dest: Path,
@@ -155,7 +294,7 @@ def download_file(
     quiet: bool = False,
     progress_label: str | None = None,
 ) -> Path:
-    """Download url → dest with retries, byte progress, % and ETA when size known."""
+    """Download url → dest with retries, resume, byte progress, % and ETA."""
     ensure_dir(dest.parent)
     if dest.exists() and dest.stat().st_size > 0 and not force:
         if not quiet:
@@ -163,62 +302,40 @@ def download_file(
         return dest
 
     tmp = dest.with_suffix(dest.suffix + ".partial")
-    last_err: Exception | None = None
+    if force and tmp.exists():
+        tmp.unlink(missing_ok=True)
     label = progress_label or dest.name
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            if not quiet:
-                print(f"  GET [{attempt}/{max_retries}] {label}", flush=True)
-            req = Request(url, headers={"User-Agent": user_agent})
-            with urlopen(req, timeout=timeout) as resp, tmp.open("wb") as out:
-                total = resp.headers.get("Content-Length")
-                total_n = int(total) if total and total.isdigit() else None
-                got = 0
-                t0 = time.time()
-                last_ui = 0.0
-                while True:
-                    chunk = resp.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    out.write(chunk)
-                    got += len(chunk)
-                    now = time.time()
-                    # Live % for large single files (>= 5 MB or unknown but slow)
-                    if (not quiet) and (now - last_ui) >= 0.5:
-                        elapsed = max(now - t0, 1e-6)
-                        speed = got / elapsed
-                        if total_n:
-                            pct = 100.0 * got / total_n
-                            eta = (total_n - got) / speed if speed > 0 else float("inf")
-                            msg = (
-                                f"\r    {label}: {pct:5.1f}% "
-                                f"{format_bytes(got)}/{format_bytes(total_n)} "
-                                f"@ {format_bytes(speed)}/s ETA {format_duration(eta)}   "
-                            )
-                        else:
-                            msg = (
-                                f"\r    {label}: {format_bytes(got)} "
-                                f"@ {format_bytes(speed)}/s (size unknown)   "
-                            )
-                        sys.stdout.write(msg)
-                        sys.stdout.flush()
-                        last_ui = now
-                if not quiet and total_n:
-                    sys.stdout.write("\n")
-            tmp.replace(dest)
-            size = dest.stat().st_size
-            if not quiet:
-                print(f"  wrote {dest.name} ({format_bytes(size)})", flush=True)
-            return dest
-        except (HTTPError, URLError, TimeoutError, OSError) as e:
-            last_err = e
-            if not quiet:
-                print(f"  warn: {e}", file=sys.stderr)
-            if tmp.exists():
-                tmp.unlink(missing_ok=True)
-            time.sleep(min(2**attempt, 30))
-    raise RuntimeError(f"Failed to download {url} → {dest}: {last_err}")
+    try:
+        if shutil.which("curl"):
+            _download_with_curl(
+                url,
+                tmp,
+                timeout=timeout,
+                max_retries=max_retries,
+                user_agent=user_agent,
+                quiet=quiet,
+                label=label,
+            )
+        else:
+            _download_with_urllib(
+                url,
+                tmp,
+                timeout=timeout,
+                max_retries=max_retries,
+                user_agent=user_agent,
+                quiet=quiet,
+                label=label,
+            )
+    except Exception:
+        # Leave .partial in place for a later resume; do not delete.
+        raise
+
+    tmp.replace(dest)
+    size = dest.stat().st_size
+    if not quiet:
+        print(f"  wrote {dest.name} ({format_bytes(size)})", flush=True)
+    return dest
 
 
 def gunzip_to(src_gz: Path, dest: Path | None = None) -> Path:
@@ -234,6 +351,10 @@ def gunzip_to(src_gz: Path, dest: Path | None = None) -> Path:
         print(f"  skip decompress (exists): {dest}")
         return dest
     print(f"  decompress {src_gz.name} → {dest.name}")
-    with gzip.open(src_gz, "rb") as f_in, dest.open("wb") as f_out:
-        shutil.copyfileobj(f_in, f_out)
+    try:
+        with gzip.open(src_gz, "rb") as f_in, dest.open("wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    except Exception:
+        dest.unlink(missing_ok=True)
+        raise
     return dest

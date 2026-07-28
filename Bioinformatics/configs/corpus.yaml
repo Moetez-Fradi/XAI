@@ -1,0 +1,19 @@
+# Chain corpus filters + held-out split (locked by build_corpus.py).
+
+min_len: 50
+max_len: 1022          # leave room for ESM2 special tokens at max_seq_len 1024
+max_unknown_frac: 0.05 # reject chains with too many non-standard / X residues
+require_scop_fold: true
+
+# Held-out: stratified by SCOPe fold (class.fold). Never use for tuning.
+holdout_fraction: 0.10
+paper_holdout_max: 1500
+pilot_holdout_max: 40
+smoke_max_pdbs: 40
+smoke_holdout_max: 8
+
+random_seed: 42
+
+# Output roots (under Bioinformatics/)
+paper_outdir: data/processed/corpus
+smoke_outdir: data/processed/corpus_smoke

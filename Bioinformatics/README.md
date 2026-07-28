@@ -70,8 +70,25 @@ Runtime: paper PDB+UniProt can take **several hours** (rate limits + 10k files).
 
 **Mac is fine for downloading.** For embedding the full 10k set with ESM2-650M, prefer **Linux + CUDA** (`./setup_env.sh --cuda`).
 
-## Next
+## Next (after downloads + tools)
 
-- `build_corpus.py` — filter chains, lock held-out split  
-- `embed_esm2.py` / `index_xqdrant.py`  
-- Experiments A–F
+```bash
+cd Bioinformatics
+source .venv/bin/activate
+
+# 4) Smoke test — tiny corpus + ESM2 embed (safe; does not touch paper lock)
+./run_smoke.sh
+# optional: ./run_smoke.sh --limit-pdbs 20 --embed-limit 16 --device cuda
+
+# 5) Full paper corpus (locks held-out split — run once)
+.venv/bin/python scripts/build_corpus.py
+
+# 6) Full embed (slow on CPU; prefer CUDA)
+.venv/bin/python scripts/embed_esm2.py
+# .venv/bin/python scripts/embed_esm2.py --device cuda --batch-size 8
+```
+
+Smoke writes `data/processed/corpus_smoke/` + `embeddings/smoke/`.  
+Paper writes `data/processed/corpus/` (with `corpus_lock.json`) + `embeddings/esm2_t33_650M/`.
+
+Still to add later: `index_xqdrant.py`, Experiments A–F.

@@ -7,24 +7,24 @@ scop:
   version: "2.08-stable"
   files:
     - name: dir.cla.scope.2.08-stable.txt
-      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.cla.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parse/dir.cla.scope.2.08-stable.txt
     - name: dir.des.scope.2.08-stable.txt
-      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.des.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parse/dir.des.scope.2.08-stable.txt
     - name: dir.hie.scope.2.08-stable.txt
-      url: https://scop.berkeley.edu/downloads/parseable%20files/dir.hie.scope.2.08-stable.txt
+      url: https://scop.berkeley.edu/downloads/parse/dir.hie.scope.2.08-stable.txt
   # ASTRAL sequence subsets (domain sequences; useful before CIF parsing)
   astral:
     - name: astral-scopedom-seqres-gd-sel-gs-bib-95-2.08.fa
-      url: https://scop.berkeley.edu/downloads/astral/astral-scopedom-seqres-gd-sel-gs-bib-95-2.08.fa
+      url: https://scop.berkeley.edu/downloads/scopeseq-2.08/astral-scopedom-seqres-gd-sel-gs-bib-95-2.08.fa
     - name: astral-scopedom-seqres-gd-sel-gs-bib-40-2.08.fa
-      url: https://scop.berkeley.edu/downloads/astral/astral-scopedom-seqres-gd-sel-gs-bib-40-2.08.fa
+      url: https://scop.berkeley.edu/downloads/scopeseq-2.08/astral-scopedom-seqres-gd-sel-gs-bib-40-2.08.fa
 
 cath:
   files:
     - name: cath-b-newest-all.gz
       url: https://download.cathdb.info/cath/releases/daily-release/newest/cath-b-newest-all.gz
-    - name: cath-b-newest-names-all.gz
-      url: https://download.cathdb.info/cath/releases/daily-release/newest/cath-b-newest-names-all.gz
+    - name: cath-b-newest-names.gz
+      url: https://download.cathdb.info/cath/releases/daily-release/newest/cath-b-newest-names.gz
     # Pinned latest-release domain list (more stable for corpus_lock.json)
     - name: cath-domain-list.txt
       url: https://download.cathdb.info/cath/releases/latest-release/cath-classification-data/cath-domain-list.txt
@@ -45,11 +45,11 @@ pdb:
 uniprot:
   sifts:
     - name: pdb_chain_uniprot.csv.gz
-      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_uniprot.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/csv/pdb_chain_uniprot.csv.gz
     - name: pdb_chain_go.csv.gz
-      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_go.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/csv/pdb_chain_go.csv.gz
     - name: pdb_chain_enzyme.csv.gz
-      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/csv/pdb_chain_enzyme.csv.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/msd/sifts/flatfiles/csv/pdb_chain_enzyme.csv.gz
   # Full Swiss-Prot (sequences + annotations flat file) — paper baseline
   sprot_dat_gz: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz
   sprot_fasta_gz: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
@@ -63,8 +63,9 @@ pfam:
   files:
     - name: Pfam-A.clans.tsv.gz
       url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz
+    # pdbmap.gz dropped from Pfam ≥37.1; pin last release that still ships it
     - name: pdbmap.gz
-      url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/pdbmap.gz
+      url: https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam37.0/pdbmap.gz
     - name: Pfam-A.regions.tsv.gz
       url: https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.regions.tsv.gz
 

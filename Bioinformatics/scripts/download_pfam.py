@@ -27,7 +27,15 @@ def main() -> int:
     files_meta = []
     for item in cfg["files"]:
         dest = out / item["name"]
-        download_file(item["url"], dest, force=args.force, timeout=300)
+        # Pfam-A.regions.tsv.gz is multi-GB; allow long idle between chunks.
+        timeout = 600 if "regions" in item["name"] else 300
+        download_file(
+            item["url"],
+            dest,
+            force=args.force,
+            timeout=timeout,
+            max_retries=5,
+        )
         entry = {"name": item["name"], "url": item["url"]}
         if dest.name.endswith(".gz"):
             # pdbmap.gz is not always valid gzip text we need plain; still try
