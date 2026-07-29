@@ -1,0 +1,61 @@
+# Experiment B v2 — per-residue binned profile attribution validity.
+
+# Reuse DSSP paths from v1
+mkdssp_bin: tools/mamba/envs/bio-tools/bin/mkdssp
+annotations_dir: data/annotations/dssp
+features_table: data/annotations/dssp_chain_features.csv
+
+# Global features (for cohort filtering only; same 6 as v1)
+global_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+  - mean_b_factor
+
+# Binned profile: n_bins × profile_features per chain
+n_bins: 32
+profile_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+
+# Dim↔profile map fit on train chains only
+n_train_for_map: 3000
+map_random_seed: 42
+
+# Pairs from locked Exp A
+exp_a_jsonl: results/exp_a/checkpoints/queries.jsonl
+exp_a_smoke_jsonl: results/exp_a_smoke/checkpoints/queries.jsonl
+max_neighbors_per_query: 5
+min_attribution_mass: 1e-6
+
+# Cohort thresholds on global feature cosine (descending = stricter filter)
+feature_cosine_cohorts:
+  - 1.0      # all pairs (label: all)
+  - 0.999
+  - 0.995
+  - 0.99
+
+# Negative-control: diff-fold pairs with saturated global cosine
+saturated_diff_fold_cosine_min: 0.999
+
+# Ablations: keep top-N dims by |contribution|
+ablation_top_dims:
+  - 5
+  - 20
+  - 32
+  - 50
+
+n_permutations: 1000
+permutation_seed: 42
+
+results_dir: results/exp_b_v2
+smoke_results_dir: results/exp_b_v2_smoke
+
+# v1 baseline metrics (read-only comparison)
+exp_b_v1_metrics: results/exp_b/metrics.json
+exp_b_v1_summary: results/exp_b/summary.tsv

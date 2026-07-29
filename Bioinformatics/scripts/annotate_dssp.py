@@ -240,6 +240,58 @@ def parse_dssp_file(dssp_path: Path, chain_id: str) -> list[dict]:
     return rows
 
 
+def binned_profile(
+    residues: list[dict],
+    bfactors: dict[int, float],
+    n_bins: int,
+) -> list[float]:
+    """Length-normalized profile: n_bins blocks × 5 features (flat list).
+
+    Features per bin: frac_helix, frac_sheet, frac_coil, mean_hydrophobicity, mean_rsa.
+    Used by Exp B v2; stored compactly via --store-profiles.
+    """
+    n_bins = max(int(n_bins), 1)
+    n_feat = 5
+    out = [0.0] * (n_bins * n_feat)
+    if not residues:
+        return out
+
+    # Assign each residue to a bin by normalized sequence index
+    bins: list[list[dict]] = [[] for _ in range(n_bins)]
+    n = len(residues)
+    for i, r in enumerate(residues):
+        b = min(int(i * n_bins / n), n_bins - 1)
+        bins[b].append(r)
+
+    for bi, chunk in enumerate(bins):
+        if not chunk:
+            continue
+        helix = sheet = coil = 0
+        hydros: list[float] = []
+        rsas: list[float] = []
+        for r in chunk:
+            ss = (r.get("ss") or "-")[0]
+            if ss in {"H", "G", "I"}:
+                helix += 1
+            elif ss in {"E", "B"}:
+                sheet += 1
+            else:
+                coil += 1
+            aa = r.get("aa", "X")
+            if aa in KD:
+                hydros.append(KD[aa])
+            if r.get("rsa") is not None:
+                rsas.append(float(r["rsa"]))
+        m = len(chunk)
+        base = bi * n_feat
+        out[base + 0] = helix / m
+        out[base + 1] = sheet / m
+        out[base + 2] = coil / m
+        out[base + 3] = float(sum(hydros) / len(hydros)) if hydros else 0.0
+        out[base + 4] = float(sum(rsas) / len(rsas)) if rsas else 0.0
+    return out
+
+
 def aggregate(residues: list[dict], bfactors: dict[int, float]) -> dict:
     n = len(residues) or 1
     helix = sheet = coil = 0
@@ -331,9 +383,25 @@ def main() -> int:
         action="store_true",
         help="Store per-residue DSSP rows in each JSON (large; needed later for Exp E/PyMOL)",
     )
+    ap.add_argument(
+        "--store-profiles",
+        action="store_true",
+        help="Store compact binned structural profiles for Exp B v2 (default n_bins from exp_b_v2.yaml)",
+    )
+    ap.add_argument(
+        "--n-bins",
+        type=int,
+        default=None,
+        help="Override profile bin count (with --store-profiles)",
+    )
     args = ap.parse_args()
 
     bcfg = load_yaml("exp_b.yaml")
+    v2cfg: dict = {}
+    try:
+        v2cfg = load_yaml("exp_b_v2.yaml")
+    except FileNotFoundError:
+        pass
     corpus_cfg = load_yaml("corpus.yaml")
     smoke = bool(args.smoke)
 
@@ -384,11 +452,55 @@ def main() -> int:
         print("ERROR: no chains to annotate", file=sys.stderr)
         return 1
 
-    pending = [
-        t
-        for t in targets
-        if args.restart or not (out_dir / f"{t['chain_id']}.json").exists()
-    ]
+    def needs_work(cid: str) -> bool:
+        jp = out_dir / f"{cid}.json"
+        if args.restart or not jp.exists():
+            return True
+        if args.store_profiles:
+            try:
+                data = json.loads(jp.read_text())
+            except json.JSONDecodeError:
+                return True
+            if not data.get("binned_profile"):
+                return True
+        return False
+
+    pending = [t for t in targets if needs_work(t["chain_id"])]
+
+    # Fast backfill: add binned_profile to existing JSONs that already store residues
+    if args.store_profiles and not args.restart:
+        n_bins = int(
+            args.n_bins if args.n_bins is not None else v2cfg.get("n_bins", 32)
+        )
+        backfill = 0
+        for t in targets:
+            cid = t["chain_id"]
+            if any(p["chain_id"] == cid for p in pending):
+                continue
+            jp = out_dir / f"{cid}.json"
+            if not jp.exists():
+                continue
+            data = json.loads(jp.read_text())
+            if data.get("binned_profile"):
+                continue
+            residues = data.get("residues")
+            if not residues:
+                continue
+            data["binned_profile"] = {
+                "n_bins": n_bins,
+                "features": [
+                    "frac_helix",
+                    "frac_sheet",
+                    "frac_coil",
+                    "mean_hydrophobicity",
+                    "mean_rsa",
+                ],
+                "values": binned_profile(residues, {}, n_bins),
+            }
+            write_json(jp, data)
+            backfill += 1
+        if backfill:
+            print(f"Backfilled binned_profile on {backfill} existing JSONs (from residues)")
     print(
         f"DSSP annotate: {len(targets)} targets, {len(pending)} pending, mkdssp={mkdssp}"
     )
@@ -437,6 +549,23 @@ def main() -> int:
                 }
                 if args.store_residues:
                     payload["residues"] = residues
+                if args.store_profiles:
+                    n_bins = int(
+                        args.n_bins
+                        if args.n_bins is not None
+                        else v2cfg.get("n_bins", 32)
+                    )
+                    payload["binned_profile"] = {
+                        "n_bins": n_bins,
+                        "features": [
+                            "frac_helix",
+                            "frac_sheet",
+                            "frac_coil",
+                            "mean_hydrophobicity",
+                            "mean_rsa",
+                        ],
+                        "values": binned_profile(residues, bfac, n_bins),
+                    }
                 write_json(out_dir / f"{cid}.json", payload)
                 ok += 1
                 progress.tick(ok=True, force_print=(i + 1 >= len(pending)))

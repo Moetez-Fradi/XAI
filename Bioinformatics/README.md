@@ -115,17 +115,25 @@ Resume is default; pass `--restart` (index: also `--recreate`) to start over.
 
 ### Experiment B (attribution validity)
 
+**v1 (null baseline, locked):** `results/exp_b/` — global 6-feature test failed (p≈0.28). Do not overwrite.
+
+**v2 (current):** per-residue binned profile validation — see `results/exp_b_v2/DESIGN.md`.
+
 ```bash
 export PATH="$PWD/tools/mamba/envs/bio-tools/bin:$PATH"
 
-# Smoke
-./run_exp_b_smoke.sh
+# Smoke v2
+./run_exp_b_v2_smoke.sh
 
-# Paper (DSSP can take a while; resumes skipped JSONs)
-.venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000
-.venv/bin/python scripts/exp_b_attribution.py
-# optional later for PyMOL/Exp E:
+# Paper v2 (DSSP resumes skipped JSONs; --store-profiles backfills existing chains)
+.venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000 --store-profiles
+.venv/bin/python scripts/exp_b_v2_attribution.py
+# optional later for PyMOL/Exp E full residue tables:
 # .venv/bin/python scripts/annotate_dssp.py --from-exp-a --store-residues
+
+# v1 commands (historical only — writes to results/exp_b/)
+# .venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000
+# .venv/bin/python scripts/exp_b_attribution.py
 ```
 
 ### Exp A baselines (parallel-safe with Exp B)
