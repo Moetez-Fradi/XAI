@@ -1,0 +1,32 @@
+bioRxiv submission helper — paste fields at https://www.biorxiv.org/submit-a-manuscript
+
+TITLE
+Beyond Top-k: Dimension-Resolved Explainability in Protein Language Model Embeddings
+
+AUTHORS
+Moetez Fradi
+
+AFFILIATION
+University of Carthage, Tunisia
+
+CORRESPONDING EMAIL
+moetez.fradi@insat.ucar.tn
+
+CATEGORY (suggested)
+Bioinformatics
+
+ABSTRACT (copy from paper)
+Protein language models such as ESM2 encode rich structural signal, yet embedding-based similarity search typically returns a ranked neighbor list without explaining why two proteins are close in vector space. We present XQdrant, an explainable retrieval layer that decomposes cosine similarity into the specific embedding dimensions driving a match (dims_explained). On a SCOP-stratified corpus of 22,118 chains (1,500 held-out queries), XQdrant achieves fold-level recall@1 of 0.898 and mAP of 0.896 with rank-stable attributions. Permutation tests on 10,235 retrieved pairs show fold-matched neighbors score higher than mismatched pairs (Mann-Whitney p < 10^-57; label-permutation gap p = 0.0002; AUROC = 0.63). Active-site localization on 1,590 SwissProt-annotated pairs shows per-residue attribution enrichment at UniProt sites (p ≈ 0). A thermostability case study (n=44 ortholog pairs) links attributions to ion-pair density (ρ = -0.30, p = 0.052). Workflow timing: indexed attributed search median 0.07 s vs. Foldseek+TM-align 4.2 s automated (+ estimated 10 min PyMOL), with zero manual steps for rationale.
+
+PDF TO UPLOAD
+Bioinformatics/Deliverables/fradi.pdf   (rename from xqdrant_psb2027.pdf before upload)
+
+CODE / DATA LINKS (for “Data/Code Availability” field if offered)
+Experiments: https://github.com/Moetez-Fradi/XAI/tree/bioinformatics-track/Bioinformatics
+XQdrant fork: https://github.com/Moetez-Fradi/XQdrant/tree/e91022ab36c724d2110b32f004ab688fee062af0
+
+NOTES
+- bioRxiv is optional for PSB but encouraged; it does NOT replace PSB submission.
+- You need a free bioRxiv account + ORCID (recommended).
+- Upload the same PDF you submit to PSB (cover letter page 1 is fine).
+- After posting, add the bioRxiv DOI to the PSB form if there is a preprint field.

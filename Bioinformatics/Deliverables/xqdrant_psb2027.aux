@@ -9,45 +9,50 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}ESM2 embedding and XQdrant indexing}{}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Dim$\rightarrow $profile attribution score}{}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Baselines and experiments}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experiment A: Retrieval accuracy}{}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces End-to-end pipeline: PDB $\rightarrow $ ESM2 $\rightarrow $ XQdrant retrieval with \texttt  {dims\_explained} $\rightarrow $ DSSP profile mapping and structural visualization.}}{}{}\protected@file@percent }
-\newlabel{fig:pipeline}{{1}{}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Code and data availability}{}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Experiment overview.}}{}{}\protected@file@percent }
 \newlabel{tab:exps}{{1}{}{}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces End-to-end pipeline: PDB $\rightarrow $ ESM2 $\rightarrow $ XQdrant retrieval with \texttt  {dims\_explained} $\rightarrow $ DSSP profile mapping and structural visualization.}}{}{}\protected@file@percent }
+\newlabel{fig:pipeline}{{1}{}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experiment A: Retrieval accuracy}{}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Fold-level retrieval on 1,500 holdout queries (Experiment A).}}{}{}\protected@file@percent }
 \newlabel{tab:retrieval}{{2}{}{}{table.2}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Fold-level recall@1/5/10 across retrieval methods (Experiment A).}}{}{}\protected@file@percent }
 \newlabel{fig:retrieval}{{2}{}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Experiment B: Attribution validity}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Experiment C: Specificity (ROC)}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Experiment D: Thermostability case study}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Experiment E: Active-site localization}{}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Experiment B: profile Spearman by fold label (left); label-permutation gap (right).}}{}{}\protected@file@percent }
 \newlabel{fig:b_label}{{3}{}{}{figure.3}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Ablation: mean profile Spearman vs.\ number of attributed dimensions (top-$N$).}}{}{}\protected@file@percent }
 \newlabel{fig:ablation}{{4}{}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Experiment F: Workflow comparison}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Experiment C: Specificity (ROC)}{}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces ROC curves for fold discrimination (Experiment C).}}{}{}\protected@file@percent }
 \newlabel{fig:roc}{{5}{}{}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Experiment D: Thermostability case study}{}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Attribution score vs thermostability feature deltas (Experiment D, $n=44$).}}{}{}\protected@file@percent }
+\newlabel{fig:d_scatter}{{6}{}{}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D).}}{}{}\protected@file@percent }
+\newlabel{fig:d_forest}{{7}{}{}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces GroEL meso/thermo pair: RSA (left) and charged surface (right).}}{}{}\protected@file@percent }
+\newlabel{fig:pymol_d}{{8}{}{}{figure.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Experiment E: Active-site localization}{}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Cohort site-enrichment ratios for XQ attributions vs TM-align overlap (functional-match vs fold-only controls; Experiment E).}}{}{}\protected@file@percent }
+\newlabel{fig:e_site}{{9}{}{}{figure.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Top-enrichment functional-match query (1UWL\_B): per-residue attribution profile with UniProt sites marked (left) and PyMOL structure coloring with active-site sticks (right; Experiment E).}}{}{}\protected@file@percent }
+\newlabel{fig:e_attr}{{10}{}{}{figure.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Experiment F: Workflow comparison}{}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Layer and pooling ablation ($n=1{,}043$ pairs).}}{}{}\protected@file@percent }
+\newlabel{tab:ablation_lp}{{3}{}{}{table.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Analyst workflow comparison: automated vs estimated manual PyMOL time (Experiment F, $n=50$).}}{}{}\protected@file@percent }
+\newlabel{fig:workflow}{{11}{}{}{figure.11}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.7}Ablations: ESM2 layer and pooling}{}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Layer/pooling ablation: same-fold minus diff-fold Spearman gap. Only last-layer mean pooling is positive.}}{}{}\protected@file@percent }
+\newlabel{fig:ablation_lp}{{12}{}{}{figure.12}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{}{}\protected@file@percent }
 \bibstyle{ws-procs11x85}
 \bibdata{xqdrant}
 \bibcite{rives2021esm2}{1}
 \bibcite{van2022foldseek}{2}
 \bibcite{zhang2005tmalign}{3}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Attribution score vs thermostability feature deltas (Experiment D, $n=44$).}}{}{}\protected@file@percent }
-\newlabel{fig:d_scatter}{{6}{}{}{figure.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D).}}{}{}\protected@file@percent }
-\newlabel{fig:d_forest}{{7}{}{}{figure.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces GroEL meso/thermo pair: RSA (left) and charged surface (right).}}{}{}\protected@file@percent }
-\newlabel{fig:pymol_d}{{8}{}{}{figure.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Per-residue attribution profile on a functional-match query; vertical bands mark UniProt active/binding sites (Experiment E).}}{}{}\protected@file@percent }
-\newlabel{fig:e_attr}{{9}{}{}{figure.9}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Analyst workflow comparison: automated vs estimated manual PyMOL time (Experiment F, $n=50$).}}{}{}\protected@file@percent }
-\newlabel{fig:workflow}{{10}{}{}{figure.10}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Layer and pooling ablation: same-fold minus diff-fold Spearman gap (subset of Exp~A pairs).}}{}{}\protected@file@percent }
-\newlabel{fig:ablation_lp}{{11}{}{}{figure.11}{}}
 \newlabel{eof}{{6}{}{}{enumiv.3}{}}

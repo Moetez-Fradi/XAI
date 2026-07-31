@@ -208,7 +208,19 @@ Paper section: [`paper/experiment_f.md`](./paper/experiment_f.md).
 ```
 
 Top-N dim ablation: built into Exp B v3 (`results/exp_b_v3/`).  
-Paper notes: [`paper/experiment_ablation.md`](./paper/experiment_ablation.md).
+Paper section: [`paper/experiment_ablation.md`](./paper/experiment_ablation.md).
+
+### PSB 2027 draft manuscript
+
+Complete draft with Experiments A–F + ablations:
+
+```bash
+cd Bioinformatics/Deliverables
+make figures && make
+# → xqdrant_psb2027.pdf (~8 body pages + cover/title/refs)
+```
+
+See [`Deliverables/README.md`](./Deliverables/README.md). Fill author info in tex + cover letter before submission.
 
 ### Experiment E (functional annotation / active-site localization)
 

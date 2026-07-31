@@ -25,6 +25,8 @@ figures:
 	      $(PS)/exp_ablation_layer_pooling.png \
 	      ../plot_scripts/outputs/pymol/exp_d_groel_rsa.png \
 	      ../plot_scripts/outputs/pymol/exp_d_groel_charged.png \
+	      $(PS)/exp_e_site_enrichment.pdf \
+	      ../plot_scripts/outputs/pymol/exp_e_active_site.png \
 	      figures/ 2>/dev/null || true
 	@# Exp E attribution panel (first matching png)
 	@for f in $(PS)/exp_e_*_attribution.png; do \

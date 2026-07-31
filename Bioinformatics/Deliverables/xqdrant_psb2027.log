@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.17)  31 JUL 2026 16:05
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.17)  31 JUL 2026 17:01
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -188,20 +188,20 @@ File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 (./xqdrant_psb2027.aux)
 \openout1 = `xqdrant_psb2027.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
 
 (/usr/share/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -228,135 +228,147 @@ e
 (./cover_letter.tex [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}])
-LaTeX Font Info:    Trying to load font information for U+msa on input line 17.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 18.
 
 
 (/usr/share/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 17.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 18.
 
 
 (/usr/share/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) [2]
-<figures/pipeline_schematic.pdf, id=23, 574.54652pt x 170.26813pt>
+) [2] [3]
+<figures/pipeline_schematic.pdf, id=28, 574.54652pt x 170.26813pt>
 File: figures/pipeline_schematic.pdf Graphic file (type pdf)
 <use figures/pipeline_schematic.pdf>
-Package pdftex.def Info: figures/pipeline_schematic.pdf  used on input line 72.
+Package pdftex.def Info: figures/pipeline_schematic.pdf  used on input line 77.
 
 (pdftex.def)             Requested size: 453.13185pt x 134.28949pt.
- [3]
 <figures/exp_a_retrieval_recall.pdf, id=29, 496.85625pt x 294.8709pt>
 File: figures/exp_a_retrieval_recall.pdf Graphic file (type pdf)
 <use figures/exp_a_retrieval_recall.pdf>
 Package pdftex.def Info: figures/exp_a_retrieval_recall.pdf  used on input line
- 111.
+ 116.
 (pdftex.def)             Requested size: 438.82297pt x 260.43204pt.
  [4 <./figures/pipeline_schematic.pdf>]
 <figures/exp_b_v3_violin_spearman.pdf, id=106, 365.50928pt x 280.17549pt>
 File: figures/exp_b_v3_violin_spearman.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_violin_spearman.pdf>
 Package pdftex.def Info: figures/exp_b_v3_violin_spearman.pdf  used on input li
-ne 122.
+ne 127.
 (pdftex.def)             Requested size: 219.41512pt x 168.1921pt.
 <figures/exp_b_v3_label_perm.pdf, id=107, 307.66505pt x 281.88156pt>
 File: figures/exp_b_v3_label_perm.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_label_perm.pdf>
 Package pdftex.def Info: figures/exp_b_v3_label_perm.pdf  used on input line 12
-2.
+7.
 (pdftex.def)             Requested size: 219.41512pt x 201.03195pt.
-<figures/exp_b_v3_ablation_topn.pdf, id=108, 369.41449pt x 270.44173pt>
+ [5 <./figures/exp_a_retrieval_recall.pdf>]
+<figures/exp_b_v3_ablation_topn.pdf, id=173, 369.41449pt x 270.44173pt>
 File: figures/exp_b_v3_ablation_topn.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_ablation_topn.pdf>
 Package pdftex.def Info: figures/exp_b_v3_ablation_topn.pdf  used on input line
- 128.
+ 133.
 (pdftex.def)             Requested size: 262.34178pt x 192.05623pt.
-<figures/exp_c_roc.pdf, id=109, 329.94722pt x 337.21922pt>
+<figures/exp_c_roc.pdf, id=174, 329.94722pt x 337.21922pt>
 File: figures/exp_c_roc.pdf Graphic file (type pdf)
 <use figures/exp_c_roc.pdf>
-Package pdftex.def Info: figures/exp_c_roc.pdf  used on input line 138.
+Package pdftex.def Info: figures/exp_c_roc.pdf  used on input line 143.
 (pdftex.def)             Requested size: 357.73682pt x 365.62694pt.
-<figures/exp_d_scatter_attribution_vs_delta.pdf, id=110, 570.57184pt x 539.7742
+ [6 <./figures/exp_b_v3_violin_spearman.pdf> <./figures/exp_b_v3_label_perm.pdf
+> <./figures/exp_b_v3_ablation_topn.pdf>]
+<figures/exp_d_scatter_attribution_vs_delta.pdf, id=325, 570.57184pt x 539.7742
 2pt>
 File: figures/exp_d_scatter_attribution_vs_delta.pdf Graphic file (type pdf)
 <use figures/exp_d_scatter_attribution_vs_delta.pdf>
 Package pdftex.def Info: figures/exp_d_scatter_attribution_vs_delta.pdf  used o
-n input line 148.
+n input line 153.
 (pdftex.def)             Requested size: 438.82297pt x 415.14148pt.
-<figures/exp_d_forest_significance.pdf, id=111, 444.28172pt x 270.44173pt>
+ [7 <./figures/exp_c_roc.pdf>]
+<figures/exp_d_forest_significance.pdf, id=381, 444.28172pt x 270.44173pt>
 File: figures/exp_d_forest_significance.pdf Graphic file (type pdf)
 <use figures/exp_d_forest_significance.pdf>
 Package pdftex.def Info: figures/exp_d_forest_significance.pdf  used on input l
-ine 154.
+ine 159.
 (pdftex.def)             Requested size: 310.03566pt x 188.73431pt.
-<figures/exp_d_groel_rsa.png, id=112, 2409.0pt x 1806.75pt>
+ [8 <./figures/exp_d_scatter_attribution_vs_delta.pdf>]
+<figures/exp_d_groel_rsa.png, id=450, 2409.0pt x 1806.75pt>
 File: figures/exp_d_groel_rsa.png Graphic file (type png)
 <use figures/exp_d_groel_rsa.png>
-Package pdftex.def Info: figures/exp_d_groel_rsa.png  used on input line 161.
+Package pdftex.def Info: figures/exp_d_groel_rsa.png  used on input line 166.
 (pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
-<figures/exp_d_groel_charged.png, id=114, 2409.0pt x 1806.75pt>
+<figures/exp_d_groel_charged.png, id=452, 2409.0pt x 1806.75pt>
 File: figures/exp_d_groel_charged.png Graphic file (type png)
 <use figures/exp_d_groel_charged.png>
 Package pdftex.def Info: figures/exp_d_groel_charged.png  used on input line 16
-1.
+6.
 (pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
- [5 <./figures/exp_a_retrieval_recall.pdf>]
-<figures/exp_e_attribution.png, id=180, 609.9588pt x 181.6386pt>
+<figures/exp_e_site_enrichment.pdf, id=453, 650.43pt x 289.08pt>
+File: figures/exp_e_site_enrichment.pdf Graphic file (type pdf)
+<use figures/exp_e_site_enrichment.pdf>
+Package pdftex.def Info: figures/exp_e_site_enrichment.pdf  used on input line 
+176.
+(pdftex.def)             Requested size: 438.82297pt x 195.03676pt.
+ [9 <./figures/exp_d_forest_significance.pdf> <./figures/exp_d_groel_rsa.png> <
+./figures/exp_d_groel_charged.png>]
+<figures/exp_e_attribution.png, id=515, 609.9588pt x 181.6386pt>
 File: figures/exp_e_attribution.png Graphic file (type png)
 <use figures/exp_e_attribution.png>
-Package pdftex.def Info: figures/exp_e_attribution.png  used on input line 171.
+Package pdftex.def Info: figures/exp_e_attribution.png  used on input line 183.
 
-(pdftex.def)             Requested size: 438.82297pt x 130.6799pt.
-<figures/exp_f_workflow_time.png, id=181, 444.9423pt x 280.4076pt>
+(pdftex.def)             Requested size: 219.41512pt x 65.33717pt.
+<figures/exp_e_active_site.png, id=516, 2409.0pt x 1806.75pt>
+File: figures/exp_e_active_site.png Graphic file (type png)
+<use figures/exp_e_active_site.png>
+Package pdftex.def Info: figures/exp_e_active_site.png  used on input line 183.
+
+(pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
+<figures/exp_f_workflow_time.png, id=517, 444.9423pt x 280.4076pt>
 File: figures/exp_f_workflow_time.png Graphic file (type png)
 <use figures/exp_f_workflow_time.png>
-Package pdftex.def Info: figures/exp_f_workflow_time.png  used on input line 18
-1.
+Package pdftex.def Info: figures/exp_f_workflow_time.png  used on input line 19
+3.
 (pdftex.def)             Requested size: 438.82297pt x 276.55182pt.
- [6 <./figures/exp_b_v3_violin_spearman.pdf> <./figures/exp_b_v3_label_perm.pdf
-> <./figures/exp_b_v3_ablation_topn.pdf>]
-<figures/exp_ablation_layer_pooling.png, id=332, 511.4307pt x 249.8133pt>
+ [10 <./figures/exp_e_site_enrichment.pdf> <./figures/exp_e_attribution.png> <.
+/figures/exp_e_active_site.png>]
+<figures/exp_ablation_layer_pooling.png, id=580, 511.4307pt x 249.8133pt>
 File: figures/exp_ablation_layer_pooling.png Graphic file (type png)
 <use figures/exp_ablation_layer_pooling.png>
 Package pdftex.def Info: figures/exp_ablation_layer_pooling.png  used on input 
-line 191.
+line 215.
 (pdftex.def)             Requested size: 357.73682pt x 174.74612pt.
- [7 <./figures/exp_c_roc.pdf>] (./xqdrant_psb2027.bbl
-[8 <./figures/exp_d_scatter_attribution_vs_delta.pdf>]
+ [11 <./figures/exp_f_workflow_time.png>] [12 <./figures/exp_ablation_layer_poo
+ling.png>] (./xqdrant_psb2027.bbl) [13
 
-LaTeX Warning: Text page  contains only floats.
-
-[9 <./figures/exp_d_forest_significance.pdf> <./figures/exp_d_groel_rsa.png> <.
-/figures/exp_d_groel_charged.png> <./figures/exp_e_attribution.png>]) [10 <./fi
-gures/exp_f_workflow_time.png> <./figures/exp_ablation_layer_pooling.png>]
-(./xqdrant_psb2027.aux) ) 
+] (./xqdrant_psb2027.aux) ) 
 Here is how much of TeX's memory you used:
- 3424 strings out of 469515
- 50166 string characters out of 5470807
- 450296 words of memory out of 5000000
- 32044 multiletter control sequences out of 15000+600000
+ 3444 strings out of 469515
+ 50873 string characters out of 5470807
+ 448339 words of memory out of 5000000
+ 32064 multiletter control sequences out of 15000+600000
  639054 words of font info for 82 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 87i,10n,93p,1216b,281s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/golden5ragon/.texlive/texmf-var/fonts/pk/ljfou
-r/jknappen/ec/tcrm1095.600pk></usr/share/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmbsy10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pf
-b></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/
-texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texmf-dist/f
-onts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-dist/fonts/type1/pub
-lic/amsfonts/cm/cmmib10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/
-cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></
-usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texmf-
-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmsy8.pfb></usr/share/texmf-dist/fonts/type1/public/amsfo
-nts/cm/cmti10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.
-pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/shar
-e/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on xqdrant_psb2027.pdf (10 pages, 2558240 bytes).
+ 87i,10n,93p,1284b,279s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </home/golden5ragon/.texlive/texmf-var/fonts/pk/ljf
+our/jknappen/ec/tcrm1095.600pk></usr/share/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmbsy10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.
+pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/shar
+e/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texmf-dist
+/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmmib10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmr10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb>
+</usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmsy8.pfb></usr/share/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmti10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmti1
+2.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/sh
+are/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
+Output written on xqdrant_psb2027.pdf (13 pages, 3493879 bytes).
 PDF statistics:
- 591 PDF objects out of 1000 (max. 8388607)
- 150 compressed objects within 2 object streams
+ 660 PDF objects out of 1000 (max. 8388607)
+ 162 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
- 66 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 76 words of extra memory for PDF output out of 10000 (max. 10000000)
 
