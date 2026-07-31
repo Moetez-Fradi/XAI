@@ -1,7 +1,7 @@
 # Experiment B — Dimension-Attribution Validity (Paper Section)
 
 **Status:** Locked results in `results/exp_b/` (v1), `results/exp_b_v2/` (v2), `results/exp_b_v3/` (v3).  
-**Primary results for the paper:** v2 (cleaner retrieval pairs) + v3 (robustness + label-permutation test).  
+**Primary results for the paper:** **v3** (`results/exp_b_v3/`). v1/v2 are historical baselines only.  
 **Companion experiment:** C (ROC/specificity) — see `paper/experiment_c.md` when available.
 
 ---

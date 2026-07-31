@@ -5,44 +5,52 @@ The style file: ws-procs11x85.bst
 Database file #1: xqdrant.bib
 <ws-procs11x85.bst>
 World Scientific's Bibliography Style File for Proceedings
-You've used 3 entries,
+You can't pop an empty literal stack for entry tenney2019bert
+while executing---line 2681 of file ws-procs11x85.bst
+You can't pop an empty literal stack for entry bepler2019learning
+while executing---line 2681 of file ws-procs11x85.bst
+Warning--empty volume in vig2020bertology
+You can't pop an empty literal stack for entry rao2021msat
+while executing---line 2681 of file ws-procs11x85.bst
+You've used 16 entries,
             2825 wiz_defined-function locations,
-            670 strings with 5358 characters,
-and the built_in function-call counts, 973 in all, are:
-= -- 111
-> -- 24
+            744 strings with 7037 characters,
+and the built_in function-call counts, 4130 in all, are:
+= -- 466
+> -- 120
 < -- 1
-+ -- 9
-- -- 6
-* -- 57
-:= -- 118
-add.period$ -- 3
-call.type$ -- 3
-change.case$ -- 3
++ -- 46
+- -- 30
+* -- 270
+:= -- 526
+add.period$ -- 16
+call.type$ -- 16
+change.case$ -- 16
 chr.to.int$ -- 0
-cite$ -- 3
-duplicate$ -- 65
-empty$ -- 69
-format.name$ -- 6
-if$ -- 249
+cite$ -- 17
+duplicate$ -- 248
+empty$ -- 327
+format.name$ -- 30
+if$ -- 1047
 int.to.chr$ -- 0
-int.to.str$ -- 3
-missing$ -- 3
-newline$ -- 12
-num.names$ -- 3
-pop$ -- 4
+int.to.str$ -- 16
+missing$ -- 16
+newline$ -- 51
+num.names$ -- 16
+pop$ -- 24
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 68
+skip$ -- 229
 stack$ -- 0
-substring$ -- 61
-swap$ -- 47
+substring$ -- 249
+swap$ -- 152
 text.length$ -- 1
 text.prefix$ -- 0
 top$ -- 2
 type$ -- 0
-warning$ -- 0
-while$ -- 8
-width$ -- 4
-write$ -- 29
+warning$ -- 1
+while$ -- 39
+width$ -- 18
+write$ -- 139
+(There were 3 error messages)

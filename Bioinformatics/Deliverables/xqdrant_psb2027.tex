@@ -24,7 +24,7 @@ Tunis, Tunisia\\
 $^\dag$E-mail: moetez.fradi@insat.ucar.tn}
 
 \begin{abstract}
-Protein language models such as ESM2 encode rich structural signal, yet embedding-based similarity search typically returns a ranked neighbor list without explaining \emph{why} two proteins are close in vector space. We present \textbf{XQdrant}, an explainable retrieval layer that decomposes cosine similarity into the specific embedding dimensions driving a match (\texttt{dims\_explained}). On a SCOP-stratified corpus of 22,118 chains (1,500 held-out queries), XQdrant achieves fold-level recall@1 of 0.898 and mAP of 0.896; \texttt{dims\_explained} attributions are post-hoc and leave Qdrant neighbor rankings unchanged. Permutation tests on 10,235 retrieved pairs show fold-matched neighbors score higher than mismatched pairs (Mann--Whitney $p < 10^{-57}$; label-permutation gap $p = 0.0002$; AUROC = 0.63). Active-site localization on 1,590 SwissProt-annotated pairs shows per-residue attribution enrichment at UniProt sites ($p \approx 0$). A thermostability case study ($n=44$ ortholog pairs) links attributions to ion-pair density ($\rho = -0.30$, $p = 0.052$). Workflow timing: indexed attributed search median 0.074\,s vs.\ Foldseek+TM-align 4.2\,s automated (+ estimated 10\,min PyMOL), with zero manual steps for rationale.
+Protein language models such as ESM2 encode rich structural signal, yet embedding-based similarity search typically returns a ranked neighbor list without explaining \emph{why} two proteins are close in vector space. We present \textbf{XQdrant}, an explainable retrieval layer that decomposes cosine similarity into the specific embedding dimensions driving a match (\texttt{dims\_explained}). On a SCOP-stratified corpus of 22,118 chains (1,500 held-out queries), XQdrant achieves fold-level recall@1 of 0.898 and mAP of 0.896; \texttt{dims\_explained} attributions are post-hoc and leave Qdrant neighbor rankings unchanged. Permutation tests on 10,235 retrieved pairs show fold-matched neighbors score higher than mismatched pairs (Mann--Whitney $p < 10^{-57}$; label-permutation gap $p = 0.0002$; AUROC = 0.63). Active-site localization on 1,590 query--neighbor pairs (1,550 functional-match, 40 fold-only) shows per-residue attribution enrichment at UniProt sites (Mann--Whitney $p < 10^{-16}$). A thermostability case study ($n=44$ ortholog pairs) links attributions to ion-pair density ($\rho = -0.30$, $p = 0.052$). Workflow timing: indexed attributed search median 0.074\,s vs.\ Foldseek+TM-align 4.2\,s automated (+ estimated 10\,min PyMOL), with zero manual steps for rationale.
 \end{abstract}
 
 \keywords{protein language models; explainable AI; vector retrieval; structural bioinformatics; ESM2.}
@@ -47,27 +47,41 @@ Our contributions are:
 
 \section{Related Work}
 
-\textbf{Structure and sequence search.} BLASTp, Foldseek~\cite{van2022foldseek}, and TM-align~\cite{zhang2005tmalign} provide strong baselines with explicit alignments but do not expose which embedding dimensions drive PLM-based similarity.
+\textbf{Structure and sequence search.} BLASTp~\cite{altschul1997gapped}, Foldseek~\cite{van2022foldseek}, and TM-align~\cite{zhang2005tmalign} provide strong baselines with explicit alignments but do not expose which embedding dimensions drive PLM-based similarity.
 
-\textbf{PLM interpretability.} Prior work maps embeddings to functional labels or uses attention for contact prediction; fewer studies validate dimension-level contributions against independent per-residue structural annotations at retrieval scale.
+\textbf{PLM interpretability.} Prior work probes PLM representations with supervised classifiers~\cite{tenney2019bert,bepler2019learning}, analyzes attention patterns~\cite{vig2020bertology,rao2021msat}, or maps embeddings to functional labels; fewer studies validate \emph{dimension-level} attribution contributions against independent per-residue structural annotations at retrieval scale.
 
 \section{Methods}
 
 \subsection{Corpus and splits}
 
-We built a SCOP-labeled corpus of 22,118 protein chains from PDB mmCIF files. A locked holdout set of 1,500 chains (stratified by SCOP fold) was reserved before any tuning; attribution thresholds and dim$\rightarrow$profile maps were fit on \texttt{split=train} only.
+We built a SCOP-labeled corpus of 22,118 protein chains from PDB mmCIF files~\cite{chothia1992scop,andreeva2008scop}. A locked holdout set of 1,500 chains (stratified by SCOP fold) was reserved before any tuning; attribution thresholds and dim$\rightarrow$profile maps were fit on \texttt{split=train} only. Retrieval baselines search the train split only (same candidate pool as XQdrant).
 
 \subsection{ESM2 embedding and XQdrant indexing}
 
-Chains were embedded with ESM2-t33-650M (mean-pooled last hidden state, $d=1280$). Vectors were indexed in Qdrant (HNSW approximate nearest-neighbor search) with payload metadata. Queries retrieve top-$k$ neighbors; Qdrant returns \texttt{dims\_explained} (top-32 dimensions with non-negative contributions) for each hit.
+Chains were embedded with ESM2-t33-650M~\cite{rives2021esm2} (mean-pooled last hidden state, $d=1280$). Vectors were indexed in Qdrant (HNSW approximate nearest-neighbor search) with payload metadata. Queries retrieve top-$k$ neighbors; Qdrant returns \texttt{dims\_explained} (top-32 dimensions with non-negative contributions) for each hit.
 
-\subsection{Dim$\rightarrow$profile attribution score}
+\subsection{Binned DSSP profiles and attribution scoring}
 
-For each query--neighbor pair, we form an L1-normalized contribution vector $\mathbf{a}$ over 1,280 dimensions. A train-only map $\mathbf{M}$ correlates each embedding dimension with binned DSSP profile features (32 bins $\times$ 5 properties). The attribution-weighted prediction is $\mathbf{p} = \mathbf{a} \mathbf{M}$. Pair scores are Spearman correlations between $\mathbf{p}$ and profile agreement vectors. Statistical tests include global row-permutation (5,000 permutations), label-permutation of fold labels, and Mann--Whitney $U$ tests.
+Per-chain DSSP annotations were computed with mkdssp~\cite{joosten2011dssp,kabsch1983dssp}. Residue-level profiles were split into $B=32$ equal-length bins along the chain (by normalized residue index). Within each bin we computed five features: helix fraction, sheet fraction, coil fraction, mean Kyte--Doolittle hydrophobicity, and mean relative solvent accessibility (RSA). This yields a flat $B \times 5 = 160$-dimensional profile per chain.
 
-\subsection{Baselines and experiments}
+For each query--neighbor pair we form an L1-normalized contribution vector $\mathbf{a}$ over 1,280 embedding dimensions from \texttt{dims\_explained}. A train-only map $\mathbf{M}$ (Pearson correlation of each dimension against each profile feature, fit on train chains only) links dimensions to profile features. The attribution-weighted prediction is $\mathbf{p} = \mathbf{a}\mathbf{M}$. Pair scores are Spearman correlations between $\mathbf{p}$ and a binned profile-agreement vector derived from the two chains' DSSP profiles. Experiment~B--C use global row-permutation (5,000 permutations of $\mathbf{M}$ rows), label-permutation of fold labels, and Mann--Whitney $U$ tests on fold-matched vs mismatched pairs.
 
-Experiments A--F follow Table~\ref{tab:exps}. Layer/pooling ablations re-embed 2,283 chains (150 holdout queries, top-10 neighbors, train map chains) under alternate ESM2 settings and re-score attribution fold-gap on 1,043 pairs with binned DSSP profiles.
+\subsection{Thermostability features and ortholog pairs (Exp~D)}
+
+We curated $n=44$ mesophile/thermophile chain pairs from three sources: \textbf{literature}---manually curated orthologs with published thermostability rationale (e.g., \emph{E.\ coli} vs.\ \emph{T.\ aquaticus} GroEL)~\cite{jaenicke1985thermo,kumar2001thermo}; \textbf{structure\_map}--- enzyme orthologs with mapped UniProt/OMA seeds and both structures in corpus; \textbf{auto\_fold}---same-SCOP-fold meso/thermo fallbacks when literature/OMA pairing was unavailable. For each chain we computed: (i)~\textbf{ion-pair density}---count of oppositely charged pairs (Asp/Glu vs Lys/Arg) within 4\,\AA\ divided by chain length~\cite{kumar2001thermo}; (ii)~\textbf{packing density}---$1 - \mathrm{mean(RSA)}$ from Biopython Shrake--Rupley SASA~\cite{shrake1973sasa}; (iii)~\textbf{fraction charged exposed}---fraction of charged residues with RSA${}>0.25$ from DSSP; (iv)~\textbf{mean loop length}---mean length of consecutive coil runs from DSSP. Cross-pair Spearman $\rho$ between XQ attribution scores and feature deltas (thermo$-$meso) was tested with 5,000 sign-flip permutations.
+
+\subsection{Active-site enrichment (Exp~E)}
+
+On 200 holdout enzymes with UniProt active/binding sites~\cite{uniprot2023}, we analyzed Exp~A top-$k$ neighbors, yielding 1,590 pairs total (1,550 \texttt{functional\_match}, 40 \texttt{fold\_only} controls). Per-residue XQ attribution scores were obtained by projecting \texttt{dims\_explained} through $\mathbf{M}$ onto DSSP-ordered residues and min--max normalizing within each query. \textbf{Site enrichment ratio} $=$ mean attribution at annotated site residues / mean at background residues (ratio${}>1$ indicates localization). We report Mann--Whitney tests (site vs background residues, pooled across functional-match pairs) and functional-match vs fold-only cohort comparisons at pair level. TM-align site overlap enrichment used structurally aligned residue pairs mapped to UniProt site positions as a structural baseline.
+
+\subsection{Workflow timing protocol (Exp~F)}
+
+On 50 stratified holdout queries we timed median wall-clock seconds per query on one Linux workstation (single-threaded Foldseek/BLAST/TM-align; ESM2 embed on GPU with model loaded once before the timed loop). \textbf{Cold XQdrant}: one ESM2 forward pass + Qdrant search with \texttt{dims\_explained}. \textbf{Indexed XQdrant}: search-only using precomputed embeddings (production path). Baselines: Foldseek or BLASTp (train DB) followed by TM-align on top-10 candidates. PyMOL inspection time is a fixed 10-minute literature-style estimate per query (not measured). Database build costs were measured separately and excluded from per-query medians.
+
+\subsection{Baselines and experiment overview}
+
+Experiments A--F follow Table~\ref{tab:exps}. BLASTp~\cite{altschul1997gapped} uses a train-split FASTA without additional sequence redundancy filtering; its high recall may partly reflect redundant homologs in the corpus rather than independent fold discovery. Layer/pooling ablations re-embed 2,283 chains under alternate ESM2 settings and re-score fold-gap on 1,043 pairs.
 
 \subsection{Code and data availability}
 
@@ -97,7 +111,7 @@ F & Workflow time and steps vs BLAST/Foldseek+TM-align+PyMOL \\\botrule
 
 \subsection{Experiment A: Retrieval accuracy}
 
-On 1,500 holdout queries, XQdrant fold-level recall@1 was 0.898 and mAP 0.896 (Table~\ref{tab:retrieval}; Fig.~\ref{fig:retrieval}). The ESM2 cosine baseline uses exact all-pairs cosine over the same embedding corpus (R@1 0.957); XQdrant's HNSW index incurs a modest recall gap versus this exhaustive search (0.898 R@1), consistent with standard approximate-NN trade-offs at corpus scale. Critically, enabling \texttt{dims\_explained} does \emph{not} alter Qdrant neighbor rankings (0 rank mismatches vs.\ plain Qdrant search on all 1,500 queries), confirming attribution is computed post-hoc rather than as a re-ranking step. BLASTp reached 0.965 R@1; Foldseek and TM-align reranking reached 0.913--0.914 R@1.
+On 1,500 holdout queries, XQdrant fold-level recall@1 was 0.898 and mAP 0.896 (Table~\ref{tab:retrieval}; Fig.~\ref{fig:retrieval}). The ESM2 cosine baseline uses exact all-pairs cosine over the same embedding corpus (R@1 0.957); XQdrant's HNSW index incurs a modest recall gap versus this exhaustive search (0.898 R@1), consistent with standard approximate-NN trade-offs at corpus scale. Critically, enabling \texttt{dims\_explained} does \emph{not} alter Qdrant neighbor rankings (0 rank mismatches vs.\ plain Qdrant search on all 1,500 queries), confirming attribution is computed post-hoc rather than as a re-ranking step. BLASTp reached 0.965 R@1 (train DB without sequence redundancy filtering; see Methods); Foldseek and TM-align reranking reached 0.913--0.914 R@1.
 
 \begin{table}[t]
 \tbl{Fold-level retrieval on 1,500 holdout queries (Experiment A).}
@@ -147,7 +161,7 @@ Attribution profile scores discriminated same-fold from different-fold pairs (AU
 
 \subsection{Experiment D: Thermostability case study}
 
-On 44 mesophile/thermophile pairs, cross-pair Spearman between attribution scores and ion-pair density deltas was $\rho = -0.30$ (permutation $p = 0.052$; Fig.~\ref{fig:d_scatter}--\ref{fig:d_forest}). PyMOL panels show RSA and charged-exposure differences on a GroEL ortholog pair (Fig.~\ref{fig:pymol_d}).
+On 44 mesophile/thermophile pairs (sources: \textbf{literature} $n{=}33$, \textbf{structure\_map} $n{=}2$, \textbf{auto\_fold} $n{=}9$; Methods), cross-pair Spearman between attribution scores and ion-pair density deltas was $\rho = -0.30$ (permutation $p = 0.052$; Fig.~\ref{fig:d_scatter}--\ref{fig:d_forest}). PyMOL panels show RSA and charged-exposure differences on a GroEL literature ortholog pair (Fig.~\ref{fig:pymol_d}).
 
 \begin{figurehere}
 \centerline{\includegraphics[width=0.92\textwidth]{exp_d_scatter_attribution_vs_delta.pdf}}
@@ -157,7 +171,7 @@ On 44 mesophile/thermophile pairs, cross-pair Spearman between attribution score
 
 \begin{figurehere}
 \centerline{\includegraphics[width=0.65\textwidth]{exp_d_forest_significance.pdf}}
-\caption{Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D).}
+\caption{Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D). Pair sources: literature, structure\_map, auto\_fold (Methods).}
 \label{fig:d_forest}
 \end{figurehere}
 
@@ -170,11 +184,11 @@ On 44 mesophile/thermophile pairs, cross-pair Spearman between attribution score
 
 \subsection{Experiment E: Active-site localization}
 
-On 200 holdout enzymes with UniProt active/binding sites, we analyzed 1,590 query--neighbor pairs from Exp~A retrieval. Per-residue XQ attributions enriched at annotated functional sites vs background (Mann--Whitney $p \approx 0$; mean site enrichment ratio 1.10 for functional-match pairs). TM-align structural overlap at sites was near unity on average ($\approx$1.01) but differed significantly between functional-match and fold-only controls ($p = 2.7 \times 10^{-5}$); XQ cohort separation was borderline ($p \approx 0.05$). Fig.~\ref{fig:e_site} summarizes cohort-level enrichment; Fig.~\ref{fig:e_attr} shows the top-enrichment functional-match query (1UWL\_B) in sequence and structure.
+On 200 holdout enzymes with UniProt active/binding sites, we analyzed 1,590 Exp~A query--neighbor pairs comprising 1,550 functional-match neighbors (shared EC/GO) and 40 fold-only controls (same SCOP fold, no shared function). Per-residue XQ attributions enriched at annotated functional sites vs background on pooled functional-match residues (Mann--Whitney $p < 10^{-16}$, below double-precision resolution; mean pair-level enrichment ratio 1.10). TM-align structural overlap at sites was near unity on average ($\approx$1.01) and differed significantly between functional-match and fold-only cohorts ($p = 2.7 \times 10^{-5}$); XQ cohort separation at pair level was borderline ($p = 0.051$) with a small ($n=40$) fold-only control group. Fig.~\ref{fig:e_site} summarizes cohort-level enrichment; Fig.~\ref{fig:e_attr} shows the top-enrichment functional-match query (1UWL\_B) in sequence and structure.
 
 \begin{figurehere}
 \centerline{\includegraphics[width=0.92\textwidth]{exp_e_site_enrichment.pdf}}
-\caption{Cohort site-enrichment ratios for XQ attributions vs TM-align overlap (functional-match vs fold-only controls; Experiment E).}
+\caption{Cohort site-enrichment ratios for XQ attributions vs TM-align overlap (1,550 functional-match vs 40 fold-only pairs; Experiment E).}
 \label{fig:e_site}
 \end{figurehere}
 
@@ -221,13 +235,15 @@ layer33\_cls & 33 & CLS & $-0.022$ \\\botrule
 
 XQdrant attributions are most reliable as \emph{specificity} signals---separating fold-matched from mismatched neighbors and enriching at annotated functional sites---rather than as precise absolute predictors of global DSSP profile agreement (global row-permutation $p = 0.20$ in Exp~B). Layer/pooling ablations confirm that this specificity depends on late-layer mean-pooled embeddings; earlier layers encode signal poorly aligned with our DSSP profile map. Workflow experiments show indexed attributed search at median 0.074\,s with zero manual steps, versus traditional pipelines that require estimated 10-minute PyMOL inspection per query regardless of BLAST or Foldseek automated latency.
 
-\textbf{Limitations.} Single ESM2 checkpoint; correlational dim$\rightarrow$profile map (not perturbation-validated); thermostability $n=44$ with borderline ion-pair $p = 0.052$; Exp~E XQ functional vs fold-only enrichment borderline ($p \approx 0.05$); ablation subset smaller than full Exp~B pair corpus.
+\textbf{Limitations.} Single ESM2 checkpoint; correlational dim$\rightarrow$profile map (not perturbation-validated); thermostability $n=44$ with borderline ion-pair $p = 0.052$; Exp~E XQ functional vs fold-only enrichment borderline ($p = 0.051$; fold-only $n=40$); ablation subset smaller than full Exp~B pair corpus. We report multiple statistical tests across Experiments B--E without correction; borderline $p$-values should be interpreted as exploratory rather than confirmatory.
 
 \section{Conclusion}
 
 XQdrant decomposes PLM retrieval into interpretable embedding dimensions validated against DSSP profiles, functional site annotations, thermostability proxies, and analyst workflow constraints---supporting mechanism-aware screening at embedding-search speed.
 
 \section*{Acknowledgments}
+
+Computations were performed on local Linux hardware using open-source tools (ESM2, Qdrant, mkdssp, Foldseek, BLAST+, TM-align). No external funding was received for this work.
 
 \clearpage
 \bibliographystyle{ws-procs11x85}

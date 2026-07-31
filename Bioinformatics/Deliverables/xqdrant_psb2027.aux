@@ -1,17 +1,31 @@
 \relax 
 \citation{rives2021esm2}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{}{}\protected@file@percent }
+\citation{altschul1997gapped}
 \citation{van2022foldseek}
 \citation{zhang2005tmalign}
+\citation{tenney2019bert,bepler2019learning}
+\citation{vig2020bertology,rao2021msat}
+\citation{chothia1992scop,andreeva2008scop}
+\citation{rives2021esm2}
+\citation{joosten2011dssp,kabsch1983dssp}
+\citation{jaenicke1985thermo,kumar2001thermo}
+\citation{kumar2001thermo}
+\citation{shrake1973sasa}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Methods}{}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Corpus and splits}{}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}ESM2 embedding and XQdrant indexing}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Dim$\rightarrow $profile attribution score}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Baselines and experiments}{}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Code and data availability}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Binned DSSP profiles and attribution scoring}{}{}\protected@file@percent }
+\citation{uniprot2023}
+\citation{altschul1997gapped}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Thermostability features and ortholog pairs (Exp~D)}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Active-site enrichment (Exp~E)}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Workflow timing protocol (Exp~F)}{}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7}Baselines and experiment overview}{}{}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Experiment overview.}}{}{}\protected@file@percent }
 \newlabel{tab:exps}{{1}{}{}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.8}Code and data availability}{}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces End-to-end pipeline: PDB $\rightarrow $ ESM2 $\rightarrow $ XQdrant retrieval with \texttt  {dims\_explained} $\rightarrow $ DSSP profile mapping and structural visualization.}}{}{}\protected@file@percent }
 \newlabel{fig:pipeline}{{1}{}{}{figure.1}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}Results}{}{}\protected@file@percent }
@@ -31,12 +45,12 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Experiment D: Thermostability case study}{}{}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Attribution score vs thermostability feature deltas (Experiment D, $n=44$).}}{}{}\protected@file@percent }
 \newlabel{fig:d_scatter}{{6}{}{}{figure.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D).}}{}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cross-pair Spearman correlations with 95\% bootstrap CIs (Experiment D). Pair sources: literature, structure\_map, auto\_fold (Methods).}}{}{}\protected@file@percent }
 \newlabel{fig:d_forest}{{7}{}{}{figure.7}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces GroEL meso/thermo pair: RSA (left) and charged surface (right).}}{}{}\protected@file@percent }
 \newlabel{fig:pymol_d}{{8}{}{}{figure.8}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Experiment E: Active-site localization}{}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Cohort site-enrichment ratios for XQ attributions vs TM-align overlap (functional-match vs fold-only controls; Experiment E).}}{}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Cohort site-enrichment ratios for XQ attributions vs TM-align overlap (1,550 functional-match vs 40 fold-only pairs; Experiment E).}}{}{}\protected@file@percent }
 \newlabel{fig:e_site}{{9}{}{}{figure.9}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Top-enrichment functional-match query (1UWL\_B): per-residue attribution profile with UniProt sites marked (left) and PyMOL structure coloring with active-site sticks (right; Experiment E).}}{}{}\protected@file@percent }
 \newlabel{fig:e_attr}{{10}{}{}{figure.10}{}}
@@ -53,6 +67,19 @@
 \bibstyle{ws-procs11x85}
 \bibdata{xqdrant}
 \bibcite{rives2021esm2}{1}
-\bibcite{van2022foldseek}{2}
-\bibcite{zhang2005tmalign}{3}
-\newlabel{eof}{{6}{}{}{enumiv.3}{}}
+\bibcite{altschul1997gapped}{2}
+\bibcite{van2022foldseek}{3}
+\bibcite{zhang2005tmalign}{4}
+\bibcite{tenney2019bert}{5}
+\bibcite{bepler2019learning}{6}
+\bibcite{vig2020bertology}{7}
+\bibcite{rao2021msat}{8}
+\bibcite{chothia1992scop}{9}
+\bibcite{andreeva2008scop}{10}
+\bibcite{joosten2011dssp}{11}
+\bibcite{kabsch1983dssp}{12}
+\bibcite{jaenicke1985thermo}{13}
+\bibcite{kumar2001thermo}{14}
+\bibcite{shrake1973sasa}{15}
+\bibcite{uniprot2023}{16}
+\newlabel{eof}{{6}{}{}{enumiv.16}{}}

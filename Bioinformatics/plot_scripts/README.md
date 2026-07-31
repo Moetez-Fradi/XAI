@@ -1,6 +1,8 @@
-# Paper figure scripts (Experiments A–E)
+# Paper figure scripts
 
-Generate all figures from completed experiment results. Outputs go to `plot_scripts/outputs/`.
+Outputs → `plot_scripts/outputs/`. Copied to `Deliverables/figures/` by `make -C Deliverables figures`.
+
+See also: [../README.md](../README.md), [../results/README.md](../results/README.md), [../paper/README.md](../paper/README.md).
 
 ## Quick start
 

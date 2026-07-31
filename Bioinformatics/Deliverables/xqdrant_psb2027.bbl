@@ -1,9 +1,14 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
 
 \bibitem{rives2021esm2}
 A.~Rives {\em et~al.}, Biological structure and function emerge from scaling
   unsupervised learning to 250 million protein sequences, {\em Proc. Natl.
   Acad. Sci. USA} {\bf 118}, p. e2016239118  (2021).
+
+\bibitem{altschul1997gapped}
+S.~F. Altschul {\em et~al.}, Gapped {BLAST} and {PSI-BLAST}: a new generation
+  of protein database search programs, {\em Nucleic Acids Res.} {\bf 25}, 3389
+  (1997).
 
 \bibitem{van2022foldseek}
 M.~van Kempen {\em et~al.}, Foldseek: fast and accurate protein structure
@@ -12,5 +17,56 @@ M.~van Kempen {\em et~al.}, Foldseek: fast and accurate protein structure
 \bibitem{zhang2005tmalign}
 Y.~Zhang and J.~Skolnick, {TM-align}: a protein structure alignment algorithm
   based on the {TM-score}, {\em Nucleic Acids Res.} {\bf 33}, 2302  (2005).
+
+\bibitem{tenney2019bert}
+I.~Tenney {\em et~al.}, {BERT} rediscovers the classical {NLP} pipeline, in
+  {\em ACL\/}, 2019.
+
+\bibitem{bepler2019learning}
+T.~Bepler and B.~Berger, Learning protein sequence embeddings using information
+  from structure, in {\em ICLR\/}, 2019.
+
+\bibitem{vig2020bertology}
+J.~Vig {\em et~al.}, Investigating {BERT}'s knowledge of language: Five
+  analysis methods with {NLP} probes, {\em arXiv preprint arXiv:1906.04341}
+  (2020).
+
+\bibitem{rao2021msat}
+R.~Rao {\em et~al.}, {MSA Transformer}, in {\em ICML\/}, 2021.
+
+\bibitem{chothia1992scop}
+A.~G. Murzin {\em et~al.}, {SCOP}: a structural classification of proteins
+  database for the investigation of sequences and structures, {\em J. Mol.
+  Biol.} {\bf 247}, 536  (1995).
+
+\bibitem{andreeva2008scop}
+A.~Andreeva {\em et~al.}, Data growth and its impact on the {SCOP} database:
+  new developments, {\em Nucleic Acids Res.} {\bf 36}, D419  (2008).
+
+\bibitem{joosten2011dssp}
+R.~P. Joosten {\em et~al.}, A series of {PDB} related databases for everyday
+  needs, {\em Nucleic Acids Res.} {\bf 39}, D411  (2011).
+
+\bibitem{kabsch1983dssp}
+W.~Kabsch and C.~Sander, Dictionary of protein secondary structure: pattern
+  recognition of hydrogen-bonded and geometrical features, {\em Biopolymers}
+  {\bf 22}, 2577  (1983).
+
+\bibitem{jaenicke1985thermo}
+R.~Jaenicke, Do ultra-stable proteins from hyperthermophiles have high or low
+  conformational rigidity?, {\em Proc. Natl. Acad. Sci. USA} {\bf 82}, 3050
+  (1985).
+
+\bibitem{kumar2001thermo}
+S.~Kumar and R.~Nussinov, How do thermophilic proteins deal with heat?, {\em
+  Cell. Mol. Life Sci.} {\bf 58}, 1216  (2001).
+
+\bibitem{shrake1973sasa}
+A.~Shrake and J.~A. Rupley, Environment and exposure to solvent of protein
+  atoms. lysozyme and insulin, {\em J. Mol. Biol.} {\bf 79}, 351  (1973).
+
+\bibitem{uniprot2023}
+{The UniProt Consortium}, {UniProt}: the universal protein knowledgebase in
+  2023, {\em Nucleic Acids Res.} {\bf 51}, D523  (2023).
 
 \end{thebibliography}

@@ -30,4 +30,4 @@ echo "  .venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000
 echo "  .venv/bin/python scripts/exp_b_v2_attribution.py"
 echo ""
 echo "Artifacts: results/exp_b_v2_smoke/ (smoke) or results/exp_b_v2/ (paper)"
-echo "Design doc: results/exp_b_v2/DESIGN.md"
+echo "See paper/experiment_b.md and results/exp_b_v2/"

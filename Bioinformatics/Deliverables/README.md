@@ -1,7 +1,8 @@
 # PSB 2027 Deliverables — XQdrant Paper Draft
 
-Draft manuscript for Pacific Symposium on Biocomputing 2027.  
-**Page limit:** 12 pages **excluding** cover letter, title/author page, and references.
+See [`../README.md`](../README.md) for the full pipeline. This folder is the PSB 2027 manuscript only.
+
+**Page limit:** 12 pages excluding cover letter, title/author page, and references.
 
 ## Quick build
 
