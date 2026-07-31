@@ -15,6 +15,7 @@ import argparse
 import csv
 import gzip
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -82,15 +83,44 @@ MAX_ASA = {
 }
 
 
-def find_mkdssp(cfg_path: str) -> str:
-    p = resolve_path(cfg_path)
-    if p.exists():
-        return str(p)
+def find_mkdssp(cfg_path: str | Path | None) -> str:
+    """Resolve mkdssp/dssp binary: config path, project tools env, then PATH."""
+    candidates: list[Path] = []
+    pref = str(cfg_path or "").strip()
+    if pref and pref.lower() not in {"auto", "mkdssp", "dssp"}:
+        candidates.append(resolve_path(pref))
+
+    candidates.extend(
+        [
+            BIO_ROOT / "tools/mamba/envs/bio-tools/bin/mkdssp",
+            BIO_ROOT / "tools/mamba/envs/bio-tools/bin/dssp",
+            Path("/usr/bin/mkdssp"),
+            Path("/usr/bin/dssp"),
+        ]
+    )
+    seen: set[str] = set()
+    for p in candidates:
+        key = str(p.resolve()) if p.exists() else str(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        if p.exists() and os.access(p, os.X_OK):
+            return str(p.resolve())
+
     which = shutil.which("mkdssp") or shutil.which("dssp")
     if which:
         return which
+
+    cfg_label = "(auto)" if pref.lower() in {"auto", "mkdssp", "dssp", ""} else str(resolve_path(pref))
     raise FileNotFoundError(
-        f"mkdssp not found at {p}. Run ./fetch_tools_linux.sh or set exp_b.mkdssp_bin"
+        "mkdssp/dssp not found. Install one of:\n"
+        "  Project conda (recommended):\n"
+        "    export MAMBA_ROOT_PREFIX=$PWD/tools/mamba\n"
+        "    ./tools/bin/micromamba install -y -n bio-tools -c conda-forge -c bioconda dssp\n"
+        "  Or: ./fetch_tools_linux.sh\n"
+        "  Arch AUR (not in official repos): yay -S dssp   OR   paru -S dssp\n"
+        "  Debian/Ubuntu: sudo apt-get install dssp\n"
+        f"Configured: {cfg_label}"
     )
 
 
@@ -373,6 +403,12 @@ def main() -> int:
         help="Only annotate chains appearing in Exp A results (+ optional train map set later)",
     )
     ap.add_argument(
+        "--max-neighbors",
+        type=int,
+        default=None,
+        help="Exp A neighbors to include with --from-exp-a (default: exp_b.yaml max_neighbors_per_query)",
+    )
+    ap.add_argument(
         "--also-train",
         type=int,
         default=None,
@@ -428,9 +464,10 @@ def main() -> int:
         jsonl = resolve_path(
             bcfg["exp_a_smoke_jsonl"] if smoke else bcfg["exp_a_jsonl"]
         )
-        chain_filter = chains_from_exp_a(
-            jsonl, int(bcfg.get("max_neighbors_per_query", 5))
-        )
+        max_neigh = args.max_neighbors
+        if max_neigh is None:
+            max_neigh = int(bcfg.get("max_neighbors_per_query", 5))
+        chain_filter = chains_from_exp_a(jsonl, max_neigh)
         n_train = args.also_train
         if n_train is None:
             n_train = int(bcfg.get("n_train_for_map", 3000)) if not smoke else 80

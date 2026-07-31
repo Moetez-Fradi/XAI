@@ -1,0 +1,84 @@
+# Experiment D — thermophile / mesophile ortholog case study (paper)
+
+oma_pairs_csv: data/raw/thermo/oma_ortholog_pairs.csv
+literature_pairs_stub: data/raw/thermo/literature_pairs.stub.csv
+literature_pairs_csv: data/raw/thermo/literature_pairs.csv
+pairs_out: data/processed/exp_d/pairs.csv
+
+# Thermophile identifiers in corpus
+thermo_uniprot:
+  - P0A6F5   # T. aquaticus GroEL
+  - P0A6F9   # T. aquaticus GroES
+  - Q9X218   # T. thermophilus Adk (OMA)
+  - P59846   # T. thermophilus AtpD (OMA)
+  - Q5SLS1   # T. thermophilus PykF (OMA)
+thermo_pdb_prefixes:
+  - 1GR5
+  - 1GRL
+  - 1GRU
+  - 2C7C
+  - 2C7E
+  - 1KP8
+  - 1PCQ
+  - 1PF9
+  - 1SVT
+  - 1XCK
+  - 1FY9
+  - 1JON
+
+# OMA seed UniProt may differ from corpus (SIFTS isoform / synonym)
+meso_uniprot_aliases:
+  P0A6F3: P61112   # E. coli GroEL
+
+min_chain_length: 150
+max_pairs_paper: 60   # upper cap; current merged corpus yields 46 valid unique pairs
+max_pairs_smoke: 5
+pair_random_seed: 42
+
+# Supplement corpus (after download_exp_d_structures + build + integrate)
+corpus_supplement_dir: data/processed/corpus_supplement
+corpus_merged_dir: data/processed/corpus_merged
+use_merged_corpus: true
+
+structure_download:
+  max_pdbs_per_uniprot: 3
+  include_all_oma_thermophiles: true
+  include_meso_seeds: true
+  sleep_s: 0.03
+
+# Curated ortholog groups → literature_pairs.csv (see curate_exp_d_literature.py)
+ortholog_groups:
+  - name: groel_ecoli_thermus
+    meso_uniprot: [P61112]
+    meso_uniprot_aliases: [P0A6F3]
+    meso_chain_ids: [1q3s_B, 1q3s_D, 1q3s_A]
+    thermo_uniprot: [P0A6F5]
+    one_thermo_per_pdb: true
+    min_length: 150
+    max_meso_chains: 3
+    prefer_holdout: true
+    citation: "GroEL E. coli (P61112) vs T. aquaticus (P0A6F5); multiple crystal forms"
+
+# XQdrant / embeddings
+xqdrant_config: configs/xqdrant.yaml
+embeddings_dir: embeddings/esm2_t33_650M
+exp_b_v3_map: results/exp_b_v3/dim_profile_map.npz
+
+annotations_dir: data/annotations/dssp
+mkdssp_bin: auto   # auto | path/to/mkdssp (Arch: pacman -S dssp → /usr/bin/mkdssp)
+
+# Retrieval eval: meso queries search train index for thermo ortholog
+search_split: train
+top_k: 20
+
+results_dir: results/exp_d
+smoke_results_dir: results/exp_d_smoke
+
+# Structure-based thermostability proxies (steps.md: ion pairs + packing/SASA)
+structure_features_dir: data/annotations/exp_d
+ion_pair_cutoff_angstrom: 4.0
+
+# Statistical rigor (steps.md §5)
+n_permutations: 5000
+n_bootstrap: 2000
+permutation_seed: 42

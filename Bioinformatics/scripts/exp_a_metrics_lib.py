@@ -67,6 +67,28 @@ def bootstrap_recall(
     return out
 
 
+def average_precision(relevance: list[bool]) -> float:
+    """AP from a ranked list of binary relevance labels."""
+    if not relevance:
+        return 0.0
+    n_pos = sum(relevance)
+    if n_pos == 0:
+        return 0.0
+    hit = 0
+    prec_sum = 0.0
+    for i, rel in enumerate(relevance, start=1):
+        if rel:
+            hit += 1
+            prec_sum += hit / i
+    return prec_sum / n_pos
+
+
+def mean_average_precision(flags: list[list[bool]]) -> float:
+    if not flags:
+        return 0.0
+    return float(np.mean([average_precision(row) for row in flags]))
+
+
 def evaluate_rankings(
     query_ids: list[str],
     rankings: dict[str, list[str]],
@@ -100,6 +122,9 @@ def evaluate_rankings(
         "fold": hit_rates(fold_flags, ks),
         "superfamily": hit_rates(sf_flags, ks),
         "family": hit_rates(fam_flags, ks),
+        "fold_map": mean_average_precision(fold_flags),
+        "superfamily_map": mean_average_precision(sf_flags),
+        "family_map": mean_average_precision(fam_flags),
         "fold_recall_bootstrap": bootstrap_recall(
             fold_flags, ks, n_boot=n_boot, seed=seed
         ),

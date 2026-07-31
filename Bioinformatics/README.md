@@ -117,19 +117,33 @@ Resume is default; pass `--restart` (index: also `--recreate`) to start over.
 
 **v1 (null baseline, locked):** `results/exp_b/` — global 6-feature test failed (p≈0.28). Do not overwrite.
 
-**v2 (current):** per-residue binned profile validation — see `results/exp_b_v2/DESIGN.md`.
+**v2 (locked):** `results/exp_b_v2/` — binned profiles; global row-perm p≈0.17 (not sig). Do not overwrite.
+
+**v3 (current fix):** reframed tests + more data → `results/exp_b_v3/`
 
 ```bash
 export PATH="$PWD/tools/mamba/envs/bio-tools/bin:$PATH"
 
-# Smoke v2
-./run_exp_b_v2_smoke.sh
+# Optional: backfill binned profiles for top-10 neighbors + extra train map chains
+./run_exp_b_v3.sh --backfill-profiles
 
-# Paper v2 (DSSP resumes skipped JSONs; --store-profiles backfills existing chains)
-.venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000 --store-profiles
-.venv/bin/python scripts/exp_b_v2_attribution.py
-# optional later for PyMOL/Exp E full residue tables:
-# .venv/bin/python scripts/annotate_dssp.py --from-exp-a --store-residues
+# Paper v3 (5000 permutations; ~1–2h)
+./run_exp_b_v3.sh
+# or resume: .venv/bin/python scripts/exp_b_v3_attribution.py
+
+# Smoke v3 (needs Exp A smoke first)
+./run_exp_b_v3.sh --smoke
+```
+
+v3 changes vs v2: top-10 neighbors (~10k pairs), all train DSSP profiles for map (~7661),
+three hypothesis tests (global row-perm, **same-fold row-perm**, **label-perm fold gap**),
+fixed ablations, attribution concentration diagnostics.
+
+```bash
+# v2 commands (historical — writes to results/exp_b_v2/)
+# ./run_exp_b_v2_smoke.sh
+# .venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000 --store-profiles
+# .venv/bin/python scripts/exp_b_v2_attribution.py
 
 # v1 commands (historical only — writes to results/exp_b/)
 # .venv/bin/python scripts/annotate_dssp.py --from-exp-a --also-train 3000
@@ -138,15 +152,82 @@ export PATH="$PWD/tools/mamba/envs/bio-tools/bin:$PATH"
 
 ### Exp A baselines (parallel-safe with Exp B)
 
+**Status:** Complete — `results/exp_a/baselines/comparison.tsv`
+
+| method | fold R@1 |
+|--------|----------|
+| xqdrant_esm2 | 0.898 |
+| esm2_cosine | 0.957 |
+| blastp | 0.965 |
+| foldseek | 0.913 |
+| tmalign_rerank_foldseek | 0.914 |
+
 ```bash
 source tools/env_linux.sh
-
-# While B runs — start with FASTA baselines (no structure extract):
-./run_exp_a_baselines.sh --fast-only
-
-# Full baselines (chain PDBs + Foldseek + TM-align re-rank):
-./run_exp_a_baselines.sh
-# comparison → results/exp_a/baselines/comparison.tsv
+./run_exp_a_baselines.sh              # full (structures + Foldseek + TM-align)
+./run_exp_a_baselines.sh --fast-only  # FASTA + ESM2 + BLAST only
 ```
 
-Still to add later: Experiments C–F.
+### Experiment D (thermo case study)
+
+```bash
+# Expand corpus with OMA-mapped enzyme structures (first time):
+./run_exp_d_downloads.sh
+
+# Or stepwise after structures are on disk:
+./start_xqdrant.sh --daemon
+./run_exp_d.sh --restart   # OMA + literature curation + case study
+```
+
+Paper: [`paper/experiment_d.md`](./paper/experiment_d.md)
+
+Structure expansion: [`run_exp_d_downloads.sh`](./run_exp_d_downloads.sh) downloads PDBs for all OMA thermophile orthologs, builds `corpus_supplement/`, merges into `corpus_merged/`, appends embeddings, and resumes the XQdrant index without touching the paper holdout lock.
+
+### Experiment F (runtime / workflow comparison)
+
+**Status:** Complete — `results/exp_f/`
+
+```bash
+# Requires: XQdrant index, Exp A baseline structures + FASTA/DBs, BLAST+ (tools/blast/)
+./start_xqdrant.sh --daemon
+./run_exp_f.sh --complete   # cold + indexed + BLAST + plots
+```
+
+Compares per-query wall time and step count: XQdrant (cold + indexed) vs Foldseek/BLAST → TM-align → estimated PyMOL inspection.
+
+Paper section: [`paper/experiment_f.md`](./paper/experiment_f.md).
+
+### Ablations + mAP (steps.md §4)
+
+```bash
+# mAP for Exp A (from existing checkpoints)
+.venv/bin/python scripts/recompute_exp_a_metrics.py
+
+# ESM2 layer/pooling ablation (~2283 chains; GPU recommended)
+./run_exp_ablation.sh --device cuda
+```
+
+Top-N dim ablation: built into Exp B v3 (`results/exp_b_v3/`).  
+Paper notes: [`paper/experiment_ablation.md`](./paper/experiment_ablation.md).
+
+### Experiment E (functional annotation / active-site localization)
+
+```bash
+# Requires: Exp A, SIFTS+UniProt JSON, DSSP annotations, optional Exp A baseline PDBs (TM-align)
+./run_exp_e.sh
+./run_exp_e.sh --skip-tmalign   # if TMalign/structures unavailable
+```
+
+Benchmark: holdout chains with UniProt active/binding sites + EC/GO (`data/processed/exp_e/`).  
+Compares XQ attribution site enrichment vs TM-align overlap on functional-match Exp A neighbors.
+
+Paper section: [`paper/experiment_e.md`](./paper/experiment_e.md).
+
+### Experiment C (negative controls / ROC)
+
+```bash
+# Requires Exp A (+ ideally Exp B v3 map on disk)
+./run_exp_c.sh
+```
+
+Paper sections: [`paper/experiment_b.md`](./paper/experiment_b.md), [`paper/experiment_c.md`](./paper/experiment_c.md).

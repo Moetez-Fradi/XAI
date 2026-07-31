@@ -1,0 +1,37 @@
+# Experiment F — runtime / workflow comparison (steps.md §4F)
+
+corpus_dir: data/processed/corpus
+corpus_smoke_dir: data/processed/corpus_smoke
+embeddings_dir: embeddings/esm2_t33_650M
+embeddings_smoke_dir: embeddings/smoke
+
+baselines_dir: data/baselines/exp_a
+baselines_smoke_dir: data/baselines/exp_a_smoke
+
+# Holdout queries with structure + FASTA + embedding
+n_queries_paper: 50
+n_queries_smoke: 5
+random_seed: 42
+
+top_k: 10
+tmalign_candidates: 10
+
+# Optional: time a cold ESM2 forward pass per query (model loaded once, warm GPU)
+include_embed_step: true
+embed_device: auto
+
+foldseek:
+  sensitivity: 9.5
+  max_seqs: 50
+  threads: 1   # per-query wall clock (single query at a time)
+
+blast:
+  evalue: 10
+  max_target_seqs: 50
+  num_threads: 1
+
+# Manual PyMOL inspection — not executed; literature-style estimate for workflow table
+pymol_manual_minutes: 10
+
+results_dir: results/exp_f
+smoke_results_dir: results/exp_f_smoke

@@ -1,0 +1,61 @@
+# Experiment B v3 — attribution validity with reframed tests + more data.
+# Does NOT overwrite results/exp_b/ or results/exp_b_v2/.
+
+mkdssp_bin: tools/mamba/envs/bio-tools/bin/mkdssp
+annotations_dir: data/annotations/dssp
+features_table: data/annotations/dssp_chain_features.csv
+
+global_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+  - mean_b_factor
+
+n_bins: 32
+profile_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+
+# Map fit: 0 = all train chains with binned profiles on disk
+n_train_for_map: 0
+map_method: corr          # corr | ridge
+ridge_alpha: 1.0
+map_random_seed: 42
+
+exp_a_jsonl: results/exp_a/checkpoints/queries.jsonl
+exp_a_smoke_jsonl: results/exp_a_smoke/checkpoints/queries.jsonl
+max_neighbors_per_query: 10
+min_attribution_mass: 1e-6
+
+feature_cosine_cohorts:
+  - 1.0
+  - 0.999
+  - 0.995
+  - 0.99
+
+saturated_diff_fold_cosine_min: 0.999
+
+ablation_top_dims:
+  - 1
+  - 3
+  - 5
+  - 10
+  - 32
+
+n_permutations: 5000
+permutation_seed: 42
+
+results_dir: results/exp_b_v3
+smoke_results_dir: results/exp_b_v3_smoke
+
+exp_b_v1_metrics: results/exp_b/metrics.json
+exp_b_v2_metrics: results/exp_b_v2/metrics.json
+
+# Optional pre-run (more map / pair coverage):
+#   annotate_dssp.py --from-exp-a --store-profiles --also-train 8000
+# Update exp_b.yaml max_neighbors_per_query to 10 before annotate if needed.

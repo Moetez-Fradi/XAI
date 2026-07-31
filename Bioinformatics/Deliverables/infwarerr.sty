@@ -1,0 +1,8 @@
+% Minimal infwarerr stub for builds without texlive-latexextra.
+\ProvidesPackage{infwarerr}[2007/09/09 stub for PSB draft build]
+
+\newcommand\InaccessiblePackageWarning[2][]{}
+\newcommand\InaccessiblePackageError[2][]{\PackageError{infwarerr}{#2}{}}
+
+\providecommand\@PackageInfo[2]{\PackageInfo{#1}{#2}}
+\providecommand\@PackageInfoNoLine[2]{\PackageInfo{#1}{#2}}

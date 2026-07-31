@@ -56,7 +56,13 @@ def _orthologs(entry_id: str, rel_type: str = "1:1") -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--max-pairs", type=int, default=None)
+    ap.add_argument("--max-pairs", type=int, default=None, help="Global cap (legacy)")
+    ap.add_argument(
+        "--max-pairs-per-seed",
+        type=int,
+        default=None,
+        help="Max thermophile ortholog rows per seed (default: from download.yaml)",
+    )
     ap.add_argument("--pilot", action="store_true")
     ap.add_argument("--sleep", type=float, default=0.25)
     args = ap.parse_args()
@@ -66,9 +72,15 @@ def main() -> int:
     seeds = list(cfg.get("seed_uniprot") or [])
     if args.max_pairs is not None:
         max_pairs = args.max_pairs
+        max_per_seed = max_pairs
+    elif args.max_pairs_per_seed is not None:
+        max_per_seed = args.max_pairs_per_seed
+        max_pairs = max_per_seed * max(len(seeds), 1)
     elif args.pilot:
+        max_per_seed = int(cfg.get("pilot_max_pairs_per_seed", 10))
         max_pairs = int(cfg.get("pilot_max_pairs", cfg.get("max_pairs", 50)))
     else:
+        max_per_seed = int(cfg.get("paper_max_pairs_per_seed", 15))
         max_pairs = int(cfg.get("paper_max_pairs", cfg.get("max_pairs", 200)))
     meso_code = str(cfg.get("meso_species", "ECOLI")).upper()
     thermo_hint = str(cfg.get("thermo_species", "THERM")).upper()
@@ -76,9 +88,21 @@ def main() -> int:
     rows: list[dict] = []
     errors: list[dict] = []
 
+    def _is_thermo_ortholog(o: dict, seed_species: str) -> bool:
+        o_species = (o.get("species") or {}).get("code") or ""
+        o_name = (o.get("species") or {}).get("species") or ""
+        code = o_species.upper()
+        name = o_name.upper()
+        if seed_species.upper() != meso_code:
+            return False
+        if code.startswith("THE") or code.startswith("THER"):
+            return True
+        return "THERM" in code or "THERM" in name or "THERMUS" in name
+
     for seed in seeds:
         if len(rows) >= max_pairs:
             break
+        seed_rows_before = len(rows)
         print(f"OMA lookup seed {seed}")
         try:
             prot = _protein_by_uniprot(seed)
@@ -89,23 +113,14 @@ def main() -> int:
             species = (prot.get("species") or {}).get("code") or ""
             orths = _orthologs(str(oma_id), rel_type="1:1")
             for o in orths:
+                if len(rows) - seed_rows_before >= max_per_seed:
+                    break
                 if len(rows) >= max_pairs:
                     break
+                if not _is_thermo_ortholog(o, species):
+                    continue
                 o_species = (o.get("species") or {}).get("code") or ""
-                # Keep pairs that cross meso ↔ thermo-ish species codes
-                codes = {species.upper(), o_species.upper()}
-                if meso_code not in codes and not any(
-                    thermo_hint[:4] in c for c in codes
-                ):
-                    # Still keep diverse 1:1 orthologs of E. coli seeds in Thermus*
-                    if not (
-                        species.upper() == meso_code
-                        and (
-                            o_species.upper().startswith("THE")
-                            or "THERM" in ((o.get("species") or {}).get("species") or "").upper()
-                        )
-                    ):
-                        continue
+                o_name = (o.get("species") or {}).get("species") or ""
                 o_xrefs = o.get("canonicalid") or o.get("omaid") or ""
                 rows.append(
                     {
@@ -115,6 +130,7 @@ def main() -> int:
                         "ortholog_id": o_xrefs,
                         "ortholog_oma": o.get("omaid", ""),
                         "ortholog_species": o_species,
+                        "ortholog_species_name": o_name,
                         "rel_type": "1:1",
                     }
                 )
@@ -131,6 +147,7 @@ def main() -> int:
         "ortholog_id",
         "ortholog_oma",
         "ortholog_species",
+        "ortholog_species_name",
         "rel_type",
     ]
     with csv_path.open("w", newline="") as f:

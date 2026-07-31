@@ -1,0 +1,42 @@
+# Experiment ablations — ESM2 layer + pooling (steps.md §4)
+# Subset of Exp A pairs for tractable re-embedding.
+
+corpus_dir: data/processed/corpus
+exp_a_jsonl: results/exp_a/checkpoints/queries.jsonl
+query_stride: 10          # every 10th holdout query → 150 queries
+max_neighbors: 10
+extra_train_for_map: 800  # train chains with DSSP profiles for dim→profile map
+
+annotations_dir: data/annotations/dssp
+n_bins: 32
+profile_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+
+top_dims: 32
+n_permutations: 2000
+permutation_seed: 42
+
+processed_dir: data/processed/exp_ablation
+results_dir: results/exp_ablation
+
+embed_configs:
+  - name: layer33_mean
+    layer: last
+    pooling: mean
+    outdir: embeddings/ablation/layer33_mean
+  - name: layer16_mean
+    layer: 16
+    pooling: mean
+    outdir: embeddings/ablation/layer16_mean
+  - name: layer8_mean
+    layer: 8
+    pooling: mean
+    outdir: embeddings/ablation/layer8_mean
+  - name: layer33_cls
+    layer: last
+    pooling: cls
+    outdir: embeddings/ablation/layer33_cls

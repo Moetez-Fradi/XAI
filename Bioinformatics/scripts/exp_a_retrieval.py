@@ -41,6 +41,9 @@ from common_bio import (  # noqa: E402
 from xqdrant_rest import XQdrantREST  # noqa: E402
 
 
+from exp_a_metrics_lib import mean_average_precision  # noqa: E402
+
+
 def load_meta(chains_csv: Path) -> dict[str, dict]:
     out: dict[str, dict] = {}
     with chains_csv.open() as f:
@@ -165,6 +168,9 @@ def finalize_metrics(
         "fold": hit_rates(fold_flags, ks),
         "superfamily": hit_rates(sf_flags, ks),
         "family": hit_rates(fam_flags, ks),
+        "fold_map": mean_average_precision(fold_flags),
+        "superfamily_map": mean_average_precision(sf_flags),
+        "family_map": mean_average_precision(fam_flags),
         "fold_recall_bootstrap": bootstrap_cis(
             fold_flags, ks, n_boot=n_boot, seed=boot_seed
         ),
@@ -186,6 +192,10 @@ def write_summary_tsv(path: Path, metrics: dict) -> None:
         for level in ("fold", "superfamily", "family"):
             for k, v in metrics[level].items():
                 f.write(f"{level}\t{k}\t{v:.6f}\n")
+        for level in ("fold", "superfamily", "family"):
+            mk = f"{level}_map"
+            if mk in metrics:
+                f.write(f"{level}\tmap\t{metrics[mk]:.6f}\n")
         for k, v in (metrics.get("fold_recall_bootstrap") or {}).items():
             f.write(f"fold_boot\t{k}_ci_low\t{v['ci_low']:.6f}\n")
             f.write(f"fold_boot\t{k}_ci_high\t{v['ci_high']:.6f}\n")

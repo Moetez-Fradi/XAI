@@ -1,0 +1,16 @@
+\begin{thebibliography}{1}
+
+\bibitem{rives2021esm2}
+A.~Rives {\em et~al.}, Biological structure and function emerge from scaling
+  unsupervised learning to 250 million protein sequences, {\em Proc. Natl.
+  Acad. Sci. USA} {\bf 118}, p. e2016239118  (2021).
+
+\bibitem{van2022foldseek}
+M.~van Kempen {\em et~al.}, Foldseek: fast and accurate protein structure
+  search, {\em Nat. Biotechnol.} {\bf 41}, 243  (2023).
+
+\bibitem{zhang2005tmalign}
+Y.~Zhang and J.~Skolnick, {TM-align}: a protein structure alignment algorithm
+  based on the {TM-score}, {\em Nucleic Acids Res.} {\bf 33}, 2302  (2005).
+
+\end{thebibliography}

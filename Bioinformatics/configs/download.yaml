@@ -90,7 +90,9 @@ thermo:
     - P0A7R5  # RplA
     - P0A7W1  # RpsE
   paper_max_pairs: 200
+  paper_max_pairs_per_seed: 15
   pilot_max_pairs: 50
+  pilot_max_pairs_per_seed: 10
 
 esm2:
   repo_id: facebook/esm2_t33_650M_UR50D

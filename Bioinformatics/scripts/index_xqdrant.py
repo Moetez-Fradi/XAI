@@ -83,6 +83,12 @@ def main() -> int:
     ap.add_argument("--url", default=None)
     ap.add_argument("--collection", default=None)
     ap.add_argument("--limit", type=int, default=None, help="Upsert only first N (debug)")
+    ap.add_argument(
+        "--corpus-dir",
+        type=Path,
+        default=None,
+        help="Override corpus directory for payload metadata (e.g. corpus_merged)",
+    )
     args = ap.parse_args()
 
     xcfg = load_yaml("xqdrant.yaml")
@@ -94,9 +100,12 @@ def main() -> int:
         xcfg["smoke_collection"] if smoke else xcfg["collection"]
     )
     emb_dir = resolve_path("embeddings/smoke" if smoke else "embeddings/esm2_t33_650M")
-    corpus_dir = resolve_path(
-        corpus_cfg["smoke_outdir"] if smoke else corpus_cfg["paper_outdir"]
-    )
+    if args.corpus_dir:
+        corpus_dir = resolve_path(args.corpus_dir)
+    else:
+        corpus_dir = resolve_path(
+            corpus_cfg["smoke_outdir"] if smoke else corpus_cfg["paper_outdir"]
+        )
     chains_csv = corpus_dir / "chains.csv"
     vec_path = emb_dir / "vectors.npy"
     ids_path = emb_dir / "ids.txt"

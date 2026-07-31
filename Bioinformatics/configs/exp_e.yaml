@@ -1,0 +1,84 @@
+# Experiment E — functional annotation transfer / active-site localization
+
+corpus_dir: data/processed/corpus
+corpus_smoke_dir: data/processed/corpus_smoke
+
+sifts_dir: data/raw/sifts
+uniprot_json_dir: data/raw/uniprot/json
+
+annotations_dir: data/annotations/dssp
+features_table: data/annotations/dssp_chain_features.csv
+mkdssp_bin: auto
+
+# Baseline structures for TM-align (from Exp A prep)
+baselines_structures_dir: data/baselines/exp_a/structures
+
+exp_a_jsonl: results/exp_a/checkpoints/queries.jsonl
+exp_a_smoke_jsonl: results/exp_a_smoke/checkpoints/queries.jsonl
+
+exp_b_v3_map: results/exp_b_v3/dim_profile_map.npz
+embeddings_dir: embeddings/esm2_t33_650M
+
+n_bins: 32
+profile_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+
+# UniProt feature types → functional sites (case-insensitive match on type)
+site_feature_types:
+  - Active site
+  - Binding site
+  - Site
+  - Metal binding
+
+catalytic_keywords:
+  - catalytic
+  - active site
+  - nucleophile
+  - proton donor
+  - charge relay
+  - triad
+
+site_residue_buffer: 2          # extend mapped sites ±N residues in sequence
+min_site_residues: 1
+min_chain_length: 100
+
+# Benchmark: holdout queries with sites + EC or GO label
+require_ec_or_go: true
+functional_ec_level: 3          # shared EC prefix depth for functional_match
+max_benchmark_queries: 200
+max_benchmark_queries_smoke: 12
+max_dssp_annotate: 250          # ensure per-residue DSSP for top site-rich holdout candidates
+random_seed: 42
+
+# GO terms too generic to define functional_match alone (still used in benchmark filter)
+generic_go_ids:
+  - GO:0005515   # protein binding
+  - GO:0005524   # ATP binding
+  - GO:0005737   # cytoplasm
+  - GO:0005829   # cytosol
+  - GO:0005634   # nucleus
+  - GO:0005886   # plasma membrane
+  - GO:0003674   # molecular function (root)
+  - GO:0008150   # biological_process (root)
+
+# Pairs from Exp A neighbors
+max_neighbors_per_query: 10
+include_same_fold_nonfunctional: true   # negative: same fold, different EC/UniProt
+
+# TM-align active-site localization (subset; cached)
+tmalign_max_pairs: 0          # 0 = all pairs
+tmalign_max_pairs_smoke: 8
+tmalign_threads: 4
+
+# Stats (steps.md §5)
+n_permutations: 5000
+n_bootstrap: 2000
+permutation_seed: 42
+
+processed_dir: data/processed/exp_e
+results_dir: results/exp_e
+smoke_results_dir: results/exp_e_smoke

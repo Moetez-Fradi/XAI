@@ -1,0 +1,44 @@
+# Experiment C — negative controls & specificity (ROC/PR)
+
+# Reuses Exp A pairs + Exp B v3 dim→profile map when available.
+exp_a_jsonl: results/exp_a/checkpoints/queries.jsonl
+exp_a_smoke_jsonl: results/exp_a_smoke/checkpoints/queries.jsonl
+
+# Optional: read pre-fit map from Exp B v3 (falls back to on-the-fly fit)
+exp_b_v3_map: results/exp_b_v3/dim_profile_map.npz
+exp_b_v2_map: results/exp_b_v2/dim_profile_map.npz
+
+annotations_dir: data/annotations/dssp
+features_table: data/annotations/dssp_chain_features.csv
+
+n_bins: 32
+profile_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+
+global_features:
+  - frac_helix
+  - frac_sheet
+  - frac_coil
+  - mean_hydrophobicity
+  - mean_rsa
+  - mean_b_factor
+
+max_neighbors_per_query: 5
+n_random_negatives_per_query: 3
+random_negative_seed: 42
+
+# Saturated negative: high global feature cosine, different fold
+saturated_diff_fold_cosine_min: 0.999
+
+n_train_for_map: 0
+map_random_seed: 42
+
+results_dir: results/exp_c
+smoke_results_dir: results/exp_c_smoke
+
+# Reference metrics from B v3 (read-only comparison)
+exp_b_v3_metrics: results/exp_b_v3/metrics.json

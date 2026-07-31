@@ -32,15 +32,50 @@ from common_bio import (  # noqa: E402
 )
 
 
+def cuda_usable() -> tuple[bool, str]:
+    """Return (usable, reason). PyTorch may report CUDA available but fail on newer GPUs."""
+    import torch
+
+    if not torch.cuda.is_available():
+        return False, "torch.cuda.is_available() is False"
+    try:
+        cap = torch.cuda.get_device_capability(0)
+        name = torch.cuda.get_device_name(0)
+    except Exception as e:
+        return False, f"cannot query GPU: {e}"
+    try:
+        x = torch.zeros(1, device="cuda")
+        _ = (x + 1).item()
+        torch.cuda.synchronize()
+        return True, f"{name} (sm_{cap[0]}{cap[1]})"
+    except RuntimeError as e:
+        return False, f"{name} (sm_{cap[0]}{cap[1]}): {e}"
+
+
 def pick_device(pref: str) -> str:
     import torch
 
     if pref and pref != "auto":
+        if pref == "cuda":
+            ok, reason = cuda_usable()
+            if not ok:
+                print(
+                    f"WARN: --device cuda requested but GPU not usable ({reason}); using cpu",
+                    file=sys.stderr,
+                )
+                return "cpu"
         return pref
-    if torch.cuda.is_available():
+    ok, reason = cuda_usable()
+    if ok:
+        print(f"Using CUDA: {reason}", file=sys.stderr)
         return "cuda"
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
+    if torch.cuda.is_available() and not ok:
+        print(
+            f"WARN: CUDA visible but not usable ({reason}); falling back to cpu",
+            file=sys.stderr,
+        )
     return "cpu"
 
 
@@ -63,6 +98,43 @@ def mean_pool(last_hidden, attention_mask):
     summed = torch.sum(last_hidden * mask, dim=1)
     counts = torch.clamp(mask.sum(dim=1), min=1e-9)
     return summed / counts
+
+
+def resolve_layer_index(layer_spec: str | int, n_hidden: int) -> int:
+    """Map layer spec to index into model hidden_states tuple."""
+    if str(layer_spec).lower() in ("last", "final"):
+        return n_hidden - 1
+    idx = int(layer_spec)
+    if idx < 0:
+        idx = n_hidden + idx
+    return max(0, min(idx, n_hidden - 1))
+
+
+def pool_hidden(hidden, attention_mask, pooling: str):
+    import torch
+
+    if pooling == "cls":
+        return hidden[:, 0, :]
+    if pooling == "mean":
+        return mean_pool(hidden, attention_mask)
+    raise ValueError(f"Unknown pooling: {pooling}")
+
+
+def load_chain_ids_file(path: Path) -> list[str]:
+    return [ln.strip() for ln in path.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+
+
+def load_chains_by_ids(csv_path: Path, chain_ids: list[str]) -> list[dict]:
+    want = set(chain_ids)
+    rows: list[dict] = []
+    with csv_path.open() as f:
+        for rec in csv.DictReader(f):
+            if rec["chain_id"] in want:
+                rows.append(rec)
+    missing = want - {r["chain_id"] for r in rows}
+    if missing:
+        print(f"WARN: {len(missing)} chain_ids missing from {csv_path}", file=sys.stderr)
+    return rows
 
 
 def main() -> int:
@@ -95,6 +167,19 @@ def main() -> int:
         default=None,
         help="Override embeddings output directory",
     )
+    ap.add_argument(
+        "--append",
+        action="store_true",
+        help="Append embeddings for corpus chains not already in outdir/ids.txt",
+    )
+    ap.add_argument("--layer", default=None, help="Hidden layer index or 'last' (default: esm2.yaml)")
+    ap.add_argument("--pooling", default=None, choices=("mean", "cls"))
+    ap.add_argument(
+        "--chains-file",
+        type=Path,
+        default=None,
+        help="Embed only these chain_ids (one per line)",
+    )
     args = ap.parse_args()
     smoke = bool(args.smoke or args.pilot)
 
@@ -123,9 +208,40 @@ def main() -> int:
     ensure_dir(outdir)
 
     rows = load_chains(csv_path, split=args.split, limit=args.limit)
+    if args.chains_file:
+        cf = resolve_path(args.chains_file)
+        ids_want = load_chain_ids_file(cf)
+        rows = load_chains_by_ids(csv_path, ids_want)
+        print(f"Chains file: {len(ids_want)} requested → {len(rows)} found in corpus")
+
+    existing_ids: list[str] = []
+    existing_mat: np.ndarray | None = None
+    if args.append:
+        ids_path = outdir / "ids.txt"
+        vec_path = outdir / "vectors.npy"
+        if not ids_path.exists() or not vec_path.exists():
+            print(
+                f"ERROR: --append requires existing {ids_path} and {vec_path}",
+                file=sys.stderr,
+            )
+            return 1
+        existing_ids = [
+            ln.strip() for ln in ids_path.read_text().splitlines() if ln.strip()
+        ]
+        existing_mat = np.load(vec_path)
+        if existing_mat.shape[0] != len(existing_ids):
+            print(
+                f"ERROR: vectors rows {existing_mat.shape[0]} != ids {len(existing_ids)}",
+                file=sys.stderr,
+            )
+            return 1
+        have = set(existing_ids)
+        rows = [r for r in rows if r["chain_id"] not in have]
+        print(f"Append mode: {len(rows)} new chains (existing {len(existing_ids)})")
+
     if not rows:
-        print("ERROR: no chains to embed.", file=sys.stderr)
-        return 1
+        print("Nothing to embed.")
+        return 0
 
     local_dir = resolve_path(esm_cfg.get("local_dir", "models/esm2_t33_650M_UR50D"))
     if not local_dir.exists():
@@ -135,11 +251,12 @@ def main() -> int:
     device = pick_device(args.device or esm_cfg.get("device", "auto"))
     batch_size = int(args.batch_size or esm_cfg.get("batch_size", 8))
     max_len = int(esm_cfg.get("max_seq_len", 1024))
-    pooling = esm_cfg.get("pooling", "mean")
+    pooling = args.pooling or esm_cfg.get("pooling", "mean")
+    layer_spec = args.layer if args.layer is not None else esm_cfg.get("layer", "last")
 
     print(
         f"Embedding {len(rows)} chains | device={device} batch={batch_size} "
-        f"max_len={max_len} pooling={pooling} → {outdir}"
+        f"max_len={max_len} layer={layer_spec} pooling={pooling} → {outdir}"
     )
 
     import torch
@@ -167,12 +284,10 @@ def main() -> int:
                 max_length=max_len,
             )
             enc = {k: v.to(device) for k, v in enc.items()}
-            out = model(**enc)
-            hidden = out.last_hidden_state
-            if pooling == "cls":
-                emb = hidden[:, 0, :]
-            else:
-                emb = mean_pool(hidden, enc["attention_mask"])
+            out = model(**enc, output_hidden_states=True)
+            layer_idx = resolve_layer_index(layer_spec, len(out.hidden_states))
+            hidden = out.hidden_states[layer_idx]
+            emb = pool_hidden(hidden, enc["attention_mask"], pooling)
             emb = emb.detach().float().cpu().numpy()
             for i, r in enumerate(batch):
                 vectors.append(emb[i])
@@ -180,13 +295,16 @@ def main() -> int:
                 progress.tick(ok=True, force_print=(start + i + 1 >= len(rows)))
 
     mat = np.stack(vectors, axis=0).astype(np.float32)
+    if args.append and existing_mat is not None:
+        mat = np.concatenate([existing_mat, mat], axis=0)
+        ids = existing_ids + ids
     np.save(outdir / "vectors.npy", mat)
     (outdir / "ids.txt").write_text("\n".join(ids) + "\n")
 
     meta = {
         "model_id": esm_cfg.get("model_id"),
         "local_dir": str(local_dir.relative_to(BIO_ROOT)),
-        "layer": esm_cfg.get("layer", "last"),
+        "layer": str(layer_spec),
         "pooling": pooling,
         "max_seq_len": max_len,
         "device": device,
