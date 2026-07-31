@@ -13,10 +13,13 @@ data/raw/
 data/processed/
 data/annotations/
 data/baselines/
-embeddings/
+embeddings/*
+!embeddings/README.md
 models/
-results/
-tools/
+results/*
+!results/README.md
+tools/*
+!tools/README.md
 data/xqdrant_storage/
 *.pdb
 *.cif
