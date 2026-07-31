@@ -39,7 +39,7 @@ def scatter_attribution_vs_delta(metrics: dict) -> None:
         ax.axvline(0, color='#e2e8f0', lw=0.7)
     handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=c, markersize=8, label=k) for k, c in colors_by_source.items()]
     fig.legend(handles=handles, loc='upper center', ncol=3, frameon=True, bbox_to_anchor=(0.5, 1.02))
-    fig.suptitle(f"Experiment D — attribution vs thermostability deltas (n={metrics['n_pairs']})", y=1.06)
+    fig.suptitle(f"Experiment D - attribution vs thermostability deltas (n={metrics['n_pairs']})", y=1.06)
     fig.tight_layout()
     save(fig, 'exp_d_scatter_attribution_vs_delta')
 
@@ -61,7 +61,7 @@ def forest_significance(significance_rows: list[dict]) -> None:
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
     ax.set_xlabel('Spearman ρ (attribution vs Δ feature)')
-    ax.set_title('Experiment D — cross-pair correlation + 95% CI')
+    ax.set_title('Experiment D - cross-pair correlation + 95% CI')
     save(fig, 'exp_d_forest_significance')
 
 def source_breakdown(metrics: dict) -> None:
@@ -79,7 +79,7 @@ def source_breakdown(metrics: dict) -> None:
     ax2.set_title('Attribution score by source')
     for ax in (ax1, ax2):
         ax.tick_params(axis='x', rotation=20)
-    fig.suptitle(f"Experiment D — n={metrics['n_pairs']} meso/thermo pairs")
+    fig.suptitle(f"Experiment D - n={metrics['n_pairs']} meso/thermo pairs")
     fig.tight_layout()
     save(fig, 'exp_d_source_breakdown')
 
@@ -93,7 +93,7 @@ def delta_feature_means(metrics: dict) -> None:
     ax.barh(labels, vals, color=colors, height=0.55)
     ax.axvline(0, color='#cbd5e1', lw=1)
     ax.set_xlabel('Mean thermo − meso')
-    ax.set_title('Experiment D — aggregate structural deltas')
+    ax.set_title('Experiment D - aggregate structural deltas')
     save(fig, 'exp_d_mean_deltas')
 
 def main() -> int:

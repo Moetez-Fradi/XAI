@@ -22,7 +22,7 @@ def violin_same_vs_diff(pairs_path: Path, out_name: str) -> None:
     ax.set_xticklabels([f'Same fold\n(n={len(same)})', f'Diff fold\n(n={len(diff)})'])
     ax.set_ylabel('XQ profile Spearman')
     ax.axhline(0, color='#e2e8f0', lw=0.8)
-    ax.set_title('Experiment B — attribution score by fold label')
+    ax.set_title('Experiment B - attribution score by fold label')
     save(fig, out_name)
 
 def label_perm_bar(summary_rows: list[dict]) -> None:
@@ -52,7 +52,7 @@ def ablation_topn(summary_rows: list[dict]) -> None:
     ax.plot(tops, spears, 'o-', color=PALETTE['xqdrant'], lw=2, ms=8)
     ax.set_xlabel('Top-N attributed dimensions')
     ax.set_ylabel('Mean profile Spearman')
-    ax.set_title('Ablation — attribution dimension count')
+    ax.set_title('Ablation - attribution dimension count')
     ax.set_xticks(tops)
     save(fig, 'exp_b_v3_ablation_topn')
 

@@ -33,7 +33,7 @@ Protein language models such as ESM2 encode rich structural signal, yet embeddin
 
 \section{Introduction}
 
-Embedding-based protein search has become a practical alternative to sequence and structure alignments for large-scale corpus screening. Methods built on protein language models (PLMs) such as ESM2~\cite{rives2021esm2} represent chains as fixed-length vectors amenable to fast approximate nearest-neighbor indexes. However, standard retrieval returns only a similarity score and neighbor identity. For mechanistic biology---enzyme engineering, thermostability engineering, or functional annotation---researchers need to know whether a match reflects shared catalytic architecture, hydrophobic core packing, or incidental sequence similarity.
+Embedding-based protein search has become a practical alternative to sequence and structure alignments for large-scale corpus screening. Methods built on protein language models (PLMs) such as ESM2~\cite{rives2021esm2} represent chains as fixed-length vectors amenable to fast approximate nearest-neighbor indexes. However, standard retrieval returns only a similarity score and neighbor identity. For mechanistic biology (enzyme engineering, thermostability engineering, or functional annotation), researchers need to know whether a match reflects shared catalytic architecture, hydrophobic core packing, or incidental sequence similarity.
 
 Explainability in PLM embeddings remains limited. We address this gap with \textbf{XQdrant}, a retrieval system that exposes \texttt{dims\_explained}: the top-$N$ embedding dimensions and non-negative contributions underlying each cosine-similarity match in Qdrant.
 
@@ -69,7 +69,7 @@ For each query--neighbor pair we form an L1-normalized contribution vector $\mat
 
 \subsection{Thermostability features and ortholog pairs (Exp~D)}
 
-We curated $n=44$ mesophile/thermophile chain pairs from three sources: \textbf{literature}---manually curated orthologs with published thermostability rationale (e.g., \emph{E.\ coli} vs.\ \emph{T.\ aquaticus} GroEL)~\cite{jaenicke1985thermo,kumar2001thermo}; \textbf{structure\_map}--- enzyme orthologs with mapped UniProt/OMA seeds and both structures in corpus; \textbf{auto\_fold}---same-SCOP-fold meso/thermo fallbacks when literature/OMA pairing was unavailable. For each chain we computed: (i)~\textbf{ion-pair density}---count of oppositely charged pairs (Asp/Glu vs Lys/Arg) within 4\,\AA\ divided by chain length~\cite{kumar2001thermo}; (ii)~\textbf{packing density}---$1 - \mathrm{mean(RSA)}$ from Biopython Shrake--Rupley SASA~\cite{shrake1973sasa}; (iii)~\textbf{fraction charged exposed}---fraction of charged residues with RSA${}>0.25$ from DSSP; (iv)~\textbf{mean loop length}---mean length of consecutive coil runs from DSSP. Cross-pair Spearman $\rho$ between XQ attribution scores and feature deltas (thermo$-$meso) was tested with 5,000 sign-flip permutations.
+We curated $n=44$ mesophile/thermophile chain pairs from three sources: \textbf{literature}: manually curated orthologs with published thermostability rationale (e.g., \emph{E.\ coli} vs.\ \emph{T.\ aquaticus} GroEL)~\cite{jaenicke1985thermo,kumar2001thermo}; \textbf{structure\_map}: enzyme orthologs with mapped UniProt/OMA seeds and both structures in corpus; \textbf{auto\_fold}: same-SCOP-fold meso/thermo fallbacks when literature/OMA pairing was unavailable. For each chain we computed: (i)~\textbf{ion-pair density}: count of oppositely charged pairs (Asp/Glu vs Lys/Arg) within 4\,\AA\ divided by chain length~\cite{kumar2001thermo}; (ii)~\textbf{packing density}: $1 - \mathrm{mean(RSA)}$ from Biopython Shrake--Rupley SASA~\cite{shrake1973sasa}; (iii)~\textbf{fraction charged exposed}: fraction of charged residues with RSA${}>0.25$ from DSSP; (iv)~\textbf{mean loop length}: mean length of consecutive coil runs from DSSP. Cross-pair Spearman $\rho$ between XQ attribution scores and feature deltas (thermo$-$meso) was tested with 5,000 sign-flip permutations.
 
 \subsection{Active-site enrichment (Exp~E)}
 
@@ -119,10 +119,10 @@ On 1,500 holdout queries, XQdrant fold-level recall@1 was 0.898 and mAP 0.896 (T
 \toprule
 Method & R@1 & mAP \\\colrule
 XQdrant (ESM2) & 0.898 & 0.896 \\
-ESM2 cosine & 0.957 & --- \\
-BLASTp & 0.965 & --- \\
-Foldseek & 0.913 & --- \\
-TM-align (Foldseek rerank) & 0.914 & --- \\\botrule
+ESM2 cosine & 0.957 & - \\
+BLASTp & 0.965 & - \\
+Foldseek & 0.913 & - \\
+TM-align (Foldseek rerank) & 0.914 & - \\\botrule
 \end{tabular}}\label{tab:retrieval}
 \end{table}
 
@@ -233,13 +233,13 @@ layer33\_cls & 33 & CLS & $-0.022$ \\\botrule
 
 \section{Discussion}
 
-XQdrant attributions are most reliable as \emph{specificity} signals---separating fold-matched from mismatched neighbors and enriching at annotated functional sites---rather than as precise absolute predictors of global DSSP profile agreement (global row-permutation $p = 0.20$ in Exp~B). Layer/pooling ablations confirm that this specificity depends on late-layer mean-pooled embeddings; earlier layers encode signal poorly aligned with our DSSP profile map. Workflow experiments show indexed attributed search at median 0.074\,s with zero manual steps, versus traditional pipelines that require estimated 10-minute PyMOL inspection per query regardless of BLAST or Foldseek automated latency.
+XQdrant attributions are most reliable as \emph{specificity} signals (separating fold-matched from mismatched neighbors and enriching at annotated functional sites) rather than as precise absolute predictors of global DSSP profile agreement (global row-permutation $p = 0.20$ in Exp~B). Layer/pooling ablations confirm that this specificity depends on late-layer mean-pooled embeddings; earlier layers encode signal poorly aligned with our DSSP profile map. Workflow experiments show indexed attributed search at median 0.074\,s with zero manual steps, versus traditional pipelines that require estimated 10-minute PyMOL inspection per query regardless of BLAST or Foldseek automated latency.
 
 \textbf{Limitations.} Single ESM2 checkpoint; correlational dim$\rightarrow$profile map (not perturbation-validated); thermostability $n=44$ with borderline ion-pair $p = 0.052$; Exp~E XQ functional vs fold-only enrichment borderline ($p = 0.051$; fold-only $n=40$); ablation subset smaller than full Exp~B pair corpus. We report multiple statistical tests across Experiments B--E without correction; borderline $p$-values should be interpreted as exploratory rather than confirmatory.
 
 \section{Conclusion}
 
-XQdrant decomposes PLM retrieval into interpretable embedding dimensions validated against DSSP profiles, functional site annotations, thermostability proxies, and analyst workflow constraints---supporting mechanism-aware screening at embedding-search speed.
+XQdrant decomposes PLM retrieval into interpretable embedding dimensions validated against DSSP profiles, functional site annotations, thermostability proxies, and analyst workflow constraints, supporting mechanism-aware screening at embedding-search speed.
 
 \section*{Acknowledgments}
 

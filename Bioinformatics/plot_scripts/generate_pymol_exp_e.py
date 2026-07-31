@@ -108,7 +108,7 @@ def main() -> int:
                 ax.axvline(i, color='#dc2626', alpha=0.25, lw=2)
         ax.set_xlabel('Residue index (DSSP order)')
         ax.set_ylabel('Attribution score')
-        ax.set_title(f'Exp E — {q} per-residue attribution (UniProt sites in red)')
+        ax.set_title(f'Exp E - {q} per-residue attribution (UniProt sites in red)')
         ax.set_ylim(0, max(scores) * 1.15 + 1e-06)
         save(fig, f'exp_e_{q}_attribution')
         plt.close(fig)

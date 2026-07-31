@@ -35,8 +35,13 @@ def main() -> int:
     ax.set_ylabel('Fold-level recall')
     ax.set_ylim(0.85, 1.0)
     ax.legend(loc='lower right', frameon=True)
-    ax.set_title('Experiment A — retrieval accuracy (n=1500 holdout queries)')
-    fig.text(0.01, 0.01, '† TM-align rerank on Foldseek top hits', fontsize=8, color='#64748b')
+    ax.set_title('Experiment A - retrieval accuracy (n=1500 holdout queries)')
+    fig.subplots_adjust(bottom=0.24)
+    ax.text(
+        0.0, -0.28, '† TM-align rerank on Foldseek top hits',
+        transform=ax.transAxes, ha='left', va='top',
+        fontsize=8, color='#64748b', clip_on=False,
+    )
     save(fig, 'exp_a_retrieval_recall')
     return 0
 if __name__ == '__main__':

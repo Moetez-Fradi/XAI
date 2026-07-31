@@ -64,7 +64,7 @@ def main() -> int:
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.set_ylabel('Median wall-clock time per query (s)')
-    ax.set_title('Experiment F — analyst workflow comparison')
+    ax.set_title('Experiment F - analyst workflow comparison')
     ax.legend(loc='upper left')
     steps = [f"{xq['automated_steps']} auto / {xq['manual_steps']} manual"]
     if indexed:

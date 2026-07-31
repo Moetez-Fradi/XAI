@@ -40,7 +40,7 @@ def main() -> int:
         ax.plot(fpr, tpr, lw=2, color=color, label=f'{label} (AUROC={auroc:.3f})')
     ax.set_xlabel('False positive rate')
     ax.set_ylabel('True positive rate')
-    ax.set_title('Experiment C — retrieval vs random pairs')
+    ax.set_title('Experiment C - retrieval vs random pairs')
     ax.legend(loc='lower right', frameon=True)
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.02, 1.02)
