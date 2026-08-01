@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.17)  31 JUL 2026 20:00
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.17)  1 AUG 2026 20:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -247,39 +247,39 @@ Package pdftex.def Info: figures/pipeline_schematic.pdf  used on input line 91.
 
 (pdftex.def)             Requested size: 453.13185pt x 134.28949pt.
  [5 <./figures/pipeline_schematic.pdf>]
-<figures/exp_a_retrieval_recall.pdf, id=107, 475.69281pt x 285.55226pt>
+<figures/exp_a_retrieval_recall.pdf, id=107, 469.9526pt x 285.55226pt>
 File: figures/exp_a_retrieval_recall.pdf Graphic file (type pdf)
 <use figures/exp_a_retrieval_recall.pdf>
 Package pdftex.def Info: figures/exp_a_retrieval_recall.pdf  used on input line
  130.
-(pdftex.def)             Requested size: 438.82297pt x 263.42146pt.
+(pdftex.def)             Requested size: 438.82297pt x 266.64142pt.
 <figures/exp_b_v3_violin_spearman.pdf, id=108, 365.50928pt x 280.17549pt>
 File: figures/exp_b_v3_violin_spearman.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_violin_spearman.pdf>
 Package pdftex.def Info: figures/exp_b_v3_violin_spearman.pdf  used on input li
 ne 141.
 (pdftex.def)             Requested size: 219.41512pt x 168.1921pt.
-<figures/exp_b_v3_label_perm.pdf, id=109, 307.66505pt x 281.88156pt>
+<figures/exp_b_v3_label_perm.pdf, id=109, 307.66505pt x 290.87117pt>
 File: figures/exp_b_v3_label_perm.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_label_perm.pdf>
 Package pdftex.def Info: figures/exp_b_v3_label_perm.pdf  used on input line 14
 1.
-(pdftex.def)             Requested size: 219.41512pt x 201.03195pt.
+(pdftex.def)             Requested size: 219.41512pt x 207.44315pt.
  [6 <./figures/exp_a_retrieval_recall.pdf>]
-<figures/exp_b_v3_ablation_topn.pdf, id=174, 369.41449pt x 270.44173pt>
+<figures/exp_b_v3_ablation_topn.pdf, id=171, 369.41449pt x 270.44173pt>
 File: figures/exp_b_v3_ablation_topn.pdf Graphic file (type pdf)
 <use figures/exp_b_v3_ablation_topn.pdf>
 Package pdftex.def Info: figures/exp_b_v3_ablation_topn.pdf  used on input line
  147.
 (pdftex.def)             Requested size: 262.34178pt x 192.05623pt.
-<figures/exp_c_roc.pdf, id=175, 329.94722pt x 337.21922pt>
+<figures/exp_c_roc.pdf, id=172, 329.94722pt x 337.21922pt>
 File: figures/exp_c_roc.pdf Graphic file (type pdf)
 <use figures/exp_c_roc.pdf>
 Package pdftex.def Info: figures/exp_c_roc.pdf  used on input line 157.
 (pdftex.def)             Requested size: 357.73682pt x 365.62694pt.
  [7 <./figures/exp_b_v3_violin_spearman.pdf> <./figures/exp_b_v3_label_perm.pdf
 > <./figures/exp_b_v3_ablation_topn.pdf>]
-<figures/exp_d_scatter_attribution_vs_delta.pdf, id=326, 570.57184pt x 539.7742
+<figures/exp_d_scatter_attribution_vs_delta.pdf, id=327, 570.57184pt x 539.7742
 2pt>
 File: figures/exp_d_scatter_attribution_vs_delta.pdf Graphic file (type pdf)
 <use figures/exp_d_scatter_attribution_vs_delta.pdf>
@@ -287,25 +287,25 @@ Package pdftex.def Info: figures/exp_d_scatter_attribution_vs_delta.pdf  used o
 n input line 167.
 (pdftex.def)             Requested size: 438.82297pt x 415.14148pt.
  [8 <./figures/exp_c_roc.pdf>]
-<figures/exp_d_forest_significance.pdf, id=381, 444.28172pt x 270.44173pt>
+<figures/exp_d_forest_significance.pdf, id=382, 444.28172pt x 270.44173pt>
 File: figures/exp_d_forest_significance.pdf Graphic file (type pdf)
 <use figures/exp_d_forest_significance.pdf>
 Package pdftex.def Info: figures/exp_d_forest_significance.pdf  used on input l
 ine 173.
 (pdftex.def)             Requested size: 310.03566pt x 188.73431pt.
  [9 <./figures/exp_d_scatter_attribution_vs_delta.pdf>]
-<figures/exp_d_groel_rsa.png, id=449, 2409.0pt x 1806.75pt>
+<figures/exp_d_groel_rsa.png, id=450, 2409.0pt x 1806.75pt>
 File: figures/exp_d_groel_rsa.png Graphic file (type png)
 <use figures/exp_d_groel_rsa.png>
 Package pdftex.def Info: figures/exp_d_groel_rsa.png  used on input line 180.
 (pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
-<figures/exp_d_groel_charged.png, id=451, 2409.0pt x 1806.75pt>
+<figures/exp_d_groel_charged.png, id=452, 2409.0pt x 1806.75pt>
 File: figures/exp_d_groel_charged.png Graphic file (type png)
 <use figures/exp_d_groel_charged.png>
 Package pdftex.def Info: figures/exp_d_groel_charged.png  used on input line 18
 0.
 (pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
-<figures/exp_e_site_enrichment.pdf, id=452, 650.43pt x 289.08pt>
+<figures/exp_e_site_enrichment.pdf, id=453, 650.43pt x 289.08pt>
 File: figures/exp_e_site_enrichment.pdf Graphic file (type pdf)
 <use figures/exp_e_site_enrichment.pdf>
 Package pdftex.def Info: figures/exp_e_site_enrichment.pdf  used on input line 
@@ -313,32 +313,32 @@ Package pdftex.def Info: figures/exp_e_site_enrichment.pdf  used on input line
 (pdftex.def)             Requested size: 438.82297pt x 195.03676pt.
  [10 <./figures/exp_d_forest_significance.pdf> <./figures/exp_d_groel_rsa.png> 
 <./figures/exp_d_groel_charged.png>]
-<figures/exp_e_attribution.png, id=513, 609.9588pt x 181.6386pt>
+<figures/exp_e_attribution.png, id=514, 609.9588pt x 181.6386pt>
 File: figures/exp_e_attribution.png Graphic file (type png)
 <use figures/exp_e_attribution.png>
 Package pdftex.def Info: figures/exp_e_attribution.png  used on input line 197.
 
 (pdftex.def)             Requested size: 219.41512pt x 65.33717pt.
-<figures/exp_e_active_site.png, id=514, 2409.0pt x 1806.75pt>
+<figures/exp_e_active_site.png, id=515, 2409.0pt x 1806.75pt>
 File: figures/exp_e_active_site.png Graphic file (type png)
 <use figures/exp_e_active_site.png>
 Package pdftex.def Info: figures/exp_e_active_site.png  used on input line 197.
 
 (pdftex.def)             Requested size: 219.41512pt x 164.55786pt.
-<figures/exp_f_workflow_time.png, id=515, 444.9423pt x 280.4076pt>
+<figures/exp_f_workflow_time.png, id=516, 444.9423pt x 289.3209pt>
 File: figures/exp_f_workflow_time.png Graphic file (type png)
 <use figures/exp_f_workflow_time.png>
 Package pdftex.def Info: figures/exp_f_workflow_time.png  used on input line 20
 7.
-(pdftex.def)             Requested size: 438.82297pt x 276.55182pt.
+(pdftex.def)             Requested size: 438.82297pt x 285.34256pt.
  [11 <./figures/exp_e_site_enrichment.pdf> <./figures/exp_e_attribution.png> <.
 /figures/exp_e_active_site.png>]
-<figures/exp_ablation_layer_pooling.png, id=580, 511.4307pt x 249.8133pt>
+<figures/exp_ablation_layer_pooling.png, id=581, 511.4307pt x 266.4354pt>
 File: figures/exp_ablation_layer_pooling.png Graphic file (type png)
 <use figures/exp_ablation_layer_pooling.png>
 Package pdftex.def Info: figures/exp_ablation_layer_pooling.png  used on input 
 line 229.
-(pdftex.def)             Requested size: 357.73682pt x 174.74612pt.
+(pdftex.def)             Requested size: 357.73682pt x 186.3734pt.
  [12 <./figures/exp_f_workflow_time.png>] [13 <./figures/exp_ablation_layer_poo
 ling.png>] (./xqdrant_psb2027.bbl) [14
 
@@ -365,9 +365,9 @@ ist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texmf-dist/fonts/type1
 /public/amsfonts/cm/cmti10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfon
 ts/cm/cmti12.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.p
 fb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on xqdrant_psb2027.pdf (14 pages, 3497989 bytes).
+Output written on xqdrant_psb2027.pdf (14 pages, 3513377 bytes).
 PDF statistics:
- 656 PDF objects out of 1000 (max. 8388607)
+ 657 PDF objects out of 1000 (max. 8388607)
  161 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
  76 words of extra memory for PDF output out of 10000 (max. 10000000)
