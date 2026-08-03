@@ -22,19 +22,31 @@ def main() -> int:
         return 1
     labels = [k.replace('_', '\n') for k, _ in configs]
     gaps = [float(v['fold_gap']) for _, v in configs]
-    mwp = [-np.log10(max(float(v['mann_whitney_p']), 1e-300)) for _, v in configs]
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3.5))
+    pvals = [float(v['mann_whitney_p']) for _, v in configs]
+    gap_colors = ['#059669' if g >= 0 else '#dc2626' for g in gaps]
+    sig_colors = ['#059669' if p < 0.05 else '#94a3b8' for p in pvals]
+    fig, axes = plt.subplots(1, 2, figsize=(8, 3.8))
     x = np.arange(len(labels))
-    axes[0].bar(x, gaps, color='#2563eb')
+    gap_bars = axes[0].bar(x, gaps, color=gap_colors, width=0.55)
+    axes[0].axhline(0, color='#cbd5e1', lw=1)
     axes[0].set_xticks(x)
     axes[0].set_xticklabels(labels, fontsize=8)
     axes[0].set_ylabel('Same − diff fold Spearman gap')
     axes[0].set_title('Layer / pooling ablation')
-    axes[1].bar(x, mwp, color='#059669')
+    for bar, val in zip(gap_bars, gaps):
+        y = val + (0.004 if val >= 0 else -0.004)
+        va = 'bottom' if val >= 0 else 'top'
+        axes[0].text(bar.get_x() + bar.get_width() / 2, y, f'{val:+.3f}', ha='center', va=va, fontsize=8)
+    p_bars = axes[1].bar(x, [-np.log10(max(p, 1e-300)) for p in pvals], color=sig_colors, width=0.55)
     axes[1].set_xticks(x)
     axes[1].set_xticklabels(labels, fontsize=8)
     axes[1].set_ylabel('$-\\log_{10}$ Mann–Whitney $p$')
-    axes[1].axhline(-np.log10(0.05), color='#94a3b8', ls='--', lw=1)
+    axes[1].axhline(-np.log10(0.05), color='#64748b', ls='--', lw=1)
+    for bar, p in zip(p_bars, pvals):
+        h = bar.get_height()
+        label = f'p={p:.1e}' if p < 0.05 else 'ns'
+        y = h + 0.08 if p < 0.05 else 0.08
+        axes[1].text(bar.get_x() + bar.get_width() / 2, y, label, ha='center', va='bottom', fontsize=7)
     save(fig, 'exp_ablation_layer_pooling')
     plt.close(fig)
     print(f'Wrote {OUTDIR}/exp_ablation_layer_pooling.png')

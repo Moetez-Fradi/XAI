@@ -52,7 +52,15 @@ def main() -> int:
         auto.append(bl['automated_only']['median_s'])
         manual.append(pymol_s)
         colors_auto.append(PALETTE['blast'])
-    fig, ax = plt.subplots(figsize=(max(7, 1.6 * len(labels)), 4))
+    step_lines = [f"{xq['automated_steps']} auto / {xq['manual_steps']} manual"]
+    if indexed:
+        step_lines.insert(1, '1 auto / 0 manual')
+    step_lines.append('2 auto / 1 manual')
+    if bl is not None:
+        step_lines.append('2 auto / 1 manual')
+    auto_labels = [f'{a:.2f}s' if a < 10 else f'{a:.1f}s' for a in auto]
+    tick_labels = [f'{lab}\n({steps})\nauto {at}' for lab, steps, at in zip(labels, step_lines, auto_labels)]
+    fig, ax = plt.subplots(figsize=(max(7, 1.6 * len(labels)), 4.8))
     x = np.arange(len(labels))
     w = 0.55
     ax.bar(x, auto, width=w, color=colors_auto, label='Automated')
@@ -62,18 +70,11 @@ def main() -> int:
         total = a + m
         ax.text(i, total + max(ymax * 0.02, 1), f'{total:.2f}s' if total < 60 else f'{total:.0f}s', ha='center', va='bottom', fontsize=9)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels)
+    ax.set_xticklabels(tick_labels, fontsize=8)
     ax.set_ylabel('Median wall-clock time per query (s)')
     ax.set_title('Experiment F - analyst workflow comparison')
     ax.legend(loc='upper left')
-    steps = [f"{xq['automated_steps']} auto / {xq['manual_steps']} manual"]
-    if indexed:
-        steps.append('1 auto / 0 manual')
-    steps.append('2 auto / 1 manual')
-    if bl is not None:
-        steps.append('2 auto / 1 manual')
-    for i, s in enumerate(steps):
-        ax.text(i, 0.02 * ymax, s, ha='center', va='bottom', fontsize=8, color='#475569')
+    fig.subplots_adjust(bottom=0.26)
     save(fig, 'exp_f_workflow_time')
     plt.close(fig)
     fig2, ax2 = plt.subplots(figsize=(9, 2.6))

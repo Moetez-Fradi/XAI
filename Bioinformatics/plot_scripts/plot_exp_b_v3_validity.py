@@ -31,9 +31,21 @@ def label_perm_bar(summary_rows: list[dict]) -> None:
     null = float(primary['null_mean_label_perm_fold_gap'])
     p = float(primary['p_value_label_perm_fold_gap'])
     fig, ax = plt.subplots(figsize=(4.5, 4))
-    ax.bar(['Null (label perm)', 'Observed'], [null, real], color=[PALETTE['null'], PALETTE['xqdrant']], width=0.55)
+    bars = ax.bar(['Null (label perm)', 'Observed'], [null, real], color=[PALETTE['null'], PALETTE['xqdrant']], width=0.55)
+    ymax = real * 1.15
+    ax.set_ylim(0, ymax)
     ax.set_ylabel('Same − diff fold mean Spearman')
     ax.set_title(f'Label-permutation specificity\np = {p:.4f}')
+    ax.text(
+        bars[1].get_x() + bars[1].get_width() / 2, real + ymax * 0.02,
+        f'{real:.4f}', ha='center', va='bottom', fontsize=9,
+    )
+    fig.subplots_adjust(bottom=0.18)
+    fig.text(
+        0.5, 0.03,
+        f'Null mean gap = {null:.2e} (≈0 under label permutation)',
+        ha='center', fontsize=8, color='#64748b',
+    )
     save(fig, 'exp_b_v3_label_perm')
 
 def ablation_topn(summary_rows: list[dict]) -> None:
