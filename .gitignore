@@ -32,4 +32,8 @@ exec/
 .DS_Store
 steps_vdbt.md
 
+# Local toolchains used to build engines / paper
+/tools/protoc/
+/tools/tectonic
+
 notices.txt
