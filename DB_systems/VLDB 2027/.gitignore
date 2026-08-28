@@ -17,3 +17,11 @@ plots/
 results/
 __pycache__/
 *.pyc
+*.otf
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.cut
+*.synctex.gz
