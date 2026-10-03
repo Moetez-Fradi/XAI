@@ -1,7 +1,7 @@
 # XQdrant masked-distance study — design docs
 
-Internal writeups for mechanisms on the XQdrant fork. The **submission paper**
-([`../deliverable/`](../deliverable/)) and the harness entry point
+Internal writeups for mechanisms on the XQdrant fork. The VLDB 2027 artifact
+([`../DB_systems/VLDB 2027/`](../DB_systems/VLDB%202027/)) and the harness entry point
 ([`../DB_systems/README.md`](../DB_systems/README.md)) use **M1 / M2 / …** names.
 This folder and `DB_systems/research/` directory names still use Option/X labels.
 
@@ -18,5 +18,5 @@ This folder and `DB_systems/research/` directory names still use Option/X labels
 
 Harness runners (paper order): [`../DB_systems/research/README.md`](../DB_systems/research/README.md).  
 Planning notes: [`../docs/`](../docs/).  
-Canonical figures: [`../deliverable/figures/`](../deliverable/figures/).  
+Paper figures: [`../DB_systems/VLDB 2027/figures/`](../DB_systems/VLDB%202027/figures/).  
 Local CSVs: `DB_systems/experiments/` (gitignored; see that folder’s README).

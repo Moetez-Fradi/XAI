@@ -1,32 +1,27 @@
-# `research/` — per-mechanism runners (paper order)
+# `research/` — per-mechanism runners
 
-One subfolder per claim in the short paper. Directory names keep the older
-`option*` / `xcut*` labels used in experiment IDs; **paper names** (M1, M2, …)
-are what you want when matching [`../../deliverable/`](../../deliverable/).
+One subfolder per mechanism. Directory names keep the older `option*` / `xcut*`
+labels used in experiment IDs. The VLDB 2027 paper's copies of these runners, with its
+paper → figure map, live in [`../VLDB 2027/research/`](../VLDB%202027/research/).
 
 Shared helpers: [`common_research.py`](./common_research.py) (focus request bodies,
 HTTP client that records unsupported fields, simulated mode, plot helpers).
 
 Parent entry point: [`../README.md`](../README.md).
 
-## Paper map (read this first)
+## Mechanism map
 
-| Order | Paper | Paper § | Folder | Runner | Verdict |
-|------:|-------|---------|--------|--------|---------|
-| 0 | Attribution / focus rescore | §5.2 | [`step0_baseline_done/`](./step0_baseline_done/) | root `bench_suite.py` Tests A–D | Keep attribution; rescore not accel. |
-| 1 | **M1** | §5.3 | [`option1_naive_masked/`](./option1_naive_masked/) | `run_option1_recall_collapse.py` | Baseline only |
-| 2 | **M2** | §5.4 | [`option2_hybrid_layer_cutoff/`](./option2_hybrid_layer_cutoff/) | `run_option2_layer_sweep.py` | Keep (navigability) |
-| 3 | **K1** | §5.5 | [`xcut1_gather_vs_repack/`](./xcut1_gather_vs_repack/) | Criterion bench + `plot_xcut1_kernel_bench.py` | Keep (micro) |
-| 4 | **C1** | §5.6 | [`xcut2_subspace_coherence/`](./xcut2_subspace_coherence/) | `run_xcut2_coherence.py` | Keep diagnostic |
-| 5 | **V1** | §5.7 | [`xcut3_verify_pass/`](./xcut3_verify_pass/) | `run_xcut3_verify.py` | Conditional |
-| 6 | **M3** | §5.8 | [`option4_weighted_blend/`](./option4_weighted_blend/) | `run_option4_alpha_sweep.py` | **Skip** |
-
-Not in the short paper (optional / future):
-
-| Folder | Why it is here |
-|--------|----------------|
-| [`option3_projected_index/`](./option3_projected_index/) | Future work from §6–7 (projected HNSW per focus set) |
-| [`xcut4_divergence/`](./xcut4_divergence/) | Full-track visited-set idea; not reported |
+| Mechanism | Folder | Runner |
+|-----------|--------|--------|
+| Attribution / focus rescore | [`step0_baseline_done/`](./step0_baseline_done/) | root `bench_suite.py` Tests A–D |
+| **M1** | [`option1_naive_masked/`](./option1_naive_masked/) | `run_option1_recall_collapse.py` |
+| **M2** | [`option2_hybrid_layer_cutoff/`](./option2_hybrid_layer_cutoff/) | `run_option2_layer_sweep.py` |
+| **K1** | [`xcut1_gather_vs_repack/`](./xcut1_gather_vs_repack/) | Criterion bench + `plot_xcut1_kernel_bench.py` |
+| **C1** | [`xcut2_subspace_coherence/`](./xcut2_subspace_coherence/) | `run_xcut2_coherence.py` |
+| **V1** | [`xcut3_verify_pass/`](./xcut3_verify_pass/) | `run_xcut3_verify.py` |
+| **M3** | [`option4_weighted_blend/`](./option4_weighted_blend/) | `run_option4_alpha_sweep.py` |
+| Projected index | [`option3_projected_index/`](./option3_projected_index/) | `run_option3_projected_index.py` |
+| Visited-set divergence | [`xcut4_divergence/`](./xcut4_divergence/) | `run_xcut4_divergence.py` |
 
 Design docs (same names): [`../../xqdrant_docs/`](../../xqdrant_docs/).
 
@@ -44,7 +39,7 @@ research/
 ├── xcut3_verify_pass/                # V1
 ├── option4_weighted_blend/           # M3 (skip)
 ├── option3_projected_index/          # future work
-└── xcut4_divergence/                 # full-track only
+└── xcut4_divergence/                 # visited-set divergence
 ```
 
 ## Result folders
@@ -59,8 +54,7 @@ DB_systems/experiments/<YYYY-MM-DD_HH-MM-SS>__<step_id>__<metric>/
 ```
 
 `experiments/` is gitignored (regenerable). Canonical folder names for each
-claim are listed in the per-mechanism READMEs and mirrored into
-[`../deliverable/figures/`](../../deliverable/figures/) for the PDF.
+claim are listed in the per-mechanism READMEs.
 
 ## Usage
 
@@ -82,7 +76,7 @@ python research/option2_hybrid_layer_cutoff/run_option2_layer_sweep.py \
 what the paper reports. Field names for `focus.*` live in
 `common_research.focus_body` — keep them aligned with the XQdrant REST/gRPC API.
 
-Unified same-host re-run of the main short-paper suite:
+Unified same-host re-run of the main suite:
 
 ```bash
 ../run_unified_paper_bench.sh          # from DB_systems/

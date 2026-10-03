@@ -20,9 +20,8 @@ data/
 experiments/*
 !experiments/README.md
 
-# Superseded by ../../deliverable/ — do not re-add
+# Paper sources are kept out of the repo
 paper/
 
 # Empty / scratch placeholders
 plots/
-expanding short paper/

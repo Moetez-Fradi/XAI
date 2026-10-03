@@ -22,7 +22,7 @@ __pycache__/
 /experiments/
 exec/
 
-# Stale root PDF copy (canonical build lives in deliverable/)
+# Stale root PDF copy
 /main.pdf
 
 # Rust / engine local state (also ignored inside submodules)

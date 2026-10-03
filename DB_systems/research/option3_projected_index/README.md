@@ -1,7 +1,7 @@
-# Future work — projected index (`option3_projected_index`)
+# Projected index (`option3_projected_index`)
 
-**Paper:** mentioned in §6–7 as the natural next step; **not** part of the short-paper
-eval (no M-name). Folder kept for the ceiling measurement harness.
+Ceiling-measurement harness (no M-name). The VLDB 2027 paper's copy is in
+[`../../VLDB 2027/research/option3_projected_index/`](../../VLDB%202027/research/option3_projected_index/).
 
 **Idea:** build a dedicated HNSW over projected (focus-dim-only) vectors per registered
 focus set — sidesteps M1 navigability failure, at memory/build cost per palette entry.
@@ -24,4 +24,4 @@ Output: `experiments/<ts>__option3_projected_index__recall_memory_buildtime/`.
 Compare against best **M2** cells at matching `D_sub/D`. Memory is a proxy
 (`points × D_sub × 4`), not RSS.
 
-Short-paper map: [`../README.md`](../README.md).
+Runner map: [`../README.md`](../README.md).

@@ -5,7 +5,7 @@
 # Run the attribution suite and the masked-distance research suite on the
 # *same* Linux host via HTTP against local release binaries, with N>=5 trials
 # per configuration (mean ± std). This closes the two reviewer gaps called out
-# in deliverable/main.tex Limitations:
+# in the paper's Limitations:
 #   1. single-run point estimates
 #   2. attribution-on-Apple-Silicon vs masked-on-separate-HTTP-host hardware skew
 #
@@ -199,7 +199,7 @@ main() {
   fi
 
   log "Done. Copy new plots from experiments/*${tag}*/plots and experiments/${attr_id}/plots"
-  log "into deliverable/figures/, then refresh numeric claims in deliverable/main.tex."
+  log "into the paper figures folder, then refresh the numeric claims in the paper."
 }
 
 main "$@"

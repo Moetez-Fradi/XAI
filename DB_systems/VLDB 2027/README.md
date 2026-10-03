@@ -4,7 +4,7 @@ Self-contained experiment harness and PVLDB source for:
 
 > Moetez Fradi. *XQdrant: In-Database Attribution and Masked-Distance Subspace Search over HNSW*. PVLDB, 20(1), 2027.
 
-This folder mirrors the EDBT short-paper layout in [`../`](../) and adds the full-paper expansions (MiniLM/GIST, systems load, scale×ef, filters, SQ, cost model, projected ceiling, case study). Parent [`../`](../) remains the short-paper artifact.
+This folder is self-contained: experiment harness, per-mechanism runners, and the corpora used by the paper (SIFT1M, GIST1M, MiniLM/MS MARCO), plus the systems-load, scale×ef, filter, SQ, cost-model, projected-ceiling, and case-study experiments.
 
 **Published figures and numbers in [`paper/`](./paper/) are frozen from the 2026-08-04 submission PDF.** Scripts below can regenerate CSVs/plots; they do not overwrite `paper/figures/` unless you pass `--copy-paper-figures` / run `copy_paper_figures.py`.
 

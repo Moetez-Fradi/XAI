@@ -4,7 +4,7 @@ See the parent [README](../README.md) for the paper → figure map.
 
 Shared helpers: [`common_research.py`](./common_research.py).
 
-Short-paper mechanisms (copied, paths retargeted to this folder's `experiments/`):
+Core mechanisms (results go to this folder's `experiments/`):
 
 | Paper | Folder | Runner |
 |-------|--------|--------|

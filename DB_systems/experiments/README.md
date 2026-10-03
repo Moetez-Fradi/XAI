@@ -1,8 +1,8 @@
 # `experiments/` — local run archives
 
 Timestamped CSV / plot outputs from the harness. **This directory is gitignored**
-(regenerable). Canonical figures that ship with the PDF live in
-[`../../deliverable/figures/`](../../deliverable/figures/).
+(regenerable). The VLDB 2027 paper's figures live in
+[`../VLDB 2027/figures/`](../VLDB%202027/figures/).
 
 ## Naming
 
@@ -29,7 +29,7 @@ Timestamped CSV / plot outputs from the harness. **This directory is gitignored*
 | V1 | `xcut3_*` | [`../research/xcut3_verify_pass/`](../research/xcut3_verify_pass/) |
 | M3 | `option4_weighted_blend` | [`../research/option4_weighted_blend/`](../research/option4_weighted_blend/) |
 
-Regenerate the short-paper suite:
+Regenerate the main suite:
 
 ```bash
 cd ..

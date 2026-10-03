@@ -3,7 +3,7 @@
 Internal planning for the XQdrant study. **Start with the paper and harness** if
 you are reproducing results:
 
-1. Paper: [`../deliverable/`](../deliverable/)
+1. Paper artifact (VLDB 2027): [`../DB_systems/VLDB 2027/`](../DB_systems/VLDB%202027/)
 2. Harness map (paper → folders): [`../DB_systems/README.md`](../DB_systems/README.md)
 3. Mechanism design writeups: [`../xqdrant_docs/`](../xqdrant_docs/)
 
@@ -19,7 +19,7 @@ This `docs/` folder is milestone / API scratch space — not the artifact index.
 | K1 | X1 / `xcut1_gather_vs_repack` | Gather vs repack kernel |
 | C1 | X2 / `xcut2_subspace_coherence` | Subspace↔full coherence |
 | V1 | X3 / `xcut3_verify_pass` | Verify ± overfetch |
-| — | X4 / `xcut4_divergence` | Visited-set divergence (full-paper only) |
+| — | X4 / `xcut4_divergence` | Visited-set divergence |
 
 ## Files here
 
@@ -28,4 +28,3 @@ This `docs/` folder is milestone / API scratch space — not the artifact index.
 | [`steps.md`](./steps.md) | Option/X execution plan (historical) |
 | [`working.md`](./working.md) | API / milestone notes |
 
-Full-track expansion ideas: [`../DB_systems/full_paper_plan/steps.md`](../DB_systems/full_paper_plan/steps.md).
