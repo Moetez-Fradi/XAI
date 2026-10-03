@@ -29,7 +29,7 @@ Timestamped CSV / plot outputs from the harness. **This directory is gitignored*
 | V1 | `xcut3_*` | [`../research/xcut3_verify_pass/`](../research/xcut3_verify_pass/) |
 | M3 | `option4_weighted_blend` | [`../research/option4_weighted_blend/`](../research/option4_weighted_blend/) |
 
-Regenerate the short-paper suite:
+Regenerate the paper suite:
 
 ```bash
 cd ..

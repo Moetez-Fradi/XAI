@@ -1,5 +1,8 @@
 # EDBT 2027 short research paper (XQdrant)
 
+**Title:** *[Short Paper] Which Neighbors Count? Query-Time Subspace Search and In-Database
+Attribution in XQdrant*
+
 **Track:** Research short paper (≤6 pages body + unlimited Artifacts/references).  
 **Title prefix:** `[Short Paper]` (required by CFP).  
 **Template:** official EDBT A4 / ACM `sigconf` (`edbt-macros.tex`, `balance=false`).

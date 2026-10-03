@@ -1,31 +1,30 @@
 # DB_systems — experiment harness for the XQdrant paper
 
-This folder is the **artifact companion** to the short paper in
+This folder is the **artifact companion** to the paper in
 [`../deliverable/`](../deliverable/)
-(*XQdrant: In-Database Attribution and Masked-Distance Subspace Search over HNSW*).
+(*Which Neighbors Count? Query-Time Subspace Search and In-Database Attribution
+in XQdrant*, EDBT 2027 short paper).
 
 If you opened the repo after reading the paper, start here. Folder names still
 use older `option*` / `xcut*` labels; the paper uses **M1 / M2 / M3 / K1 / C1 / V1**.
 Use the map below — do not rename directories (experiment IDs and scripts depend on them).
 
-| Paper | Paper § | Folder under `research/` | Verdict (Table 2) |
+| Paper | Paper § | Folder under `research/` | Verdict (Table 4) |
 |-------|---------|--------------------------|-------------------|
-| Attribution | §3, §5.2 | root suite Tests A–C (`bench_suite.py`) | **Keep** |
+| Attribution | §3, §5.2 | root suite Tests A–C (`bench_suite.py`); in-engine cost in [`inengine_checks/`](./research/inengine_checks/) | **Keep** |
 | Focus rescoring only | §5.2 | root suite Test D | Not an accelerator |
-| **M1** naive mask | §4.2, §5.3 | [`option1_naive_masked/`](./research/option1_naive_masked/) | Baseline only |
-| **M2** hybrid cutoff | §4.3, §5.4 | [`option2_hybrid_layer_cutoff/`](./research/option2_hybrid_layer_cutoff/) | **Keep** (navigability; e2e speedup &lt; 1) |
-| **K1** gather vs repack | §4.5, §5.5 | [`xcut1_gather_vs_repack/`](./research/xcut1_gather_vs_repack/) | **Keep** (micro); does not close e2e gap |
-| **C1** coherence | §2.3, §5.6 | [`xcut2_subspace_coherence/`](./research/xcut2_subspace_coherence/) | **Keep** diagnostic |
-| **V1** verify ± overfetch | §4.6, §5.7 | [`xcut3_verify_pass/`](./research/xcut3_verify_pass/) | Conditional (needs overfetch + coherent data) |
-| **M3** α-blend | §4.4, §5.8 | [`option4_weighted_blend/`](./research/option4_weighted_blend/) | **Skip** (best at α=0 ≡ M2) |
+| **M1** all-layer mask + **C1** coherence | §4.2, §5.3 | [`option1_naive_masked/`](./research/option1_naive_masked/), [`xcut2_subspace_coherence/`](./research/xcut2_subspace_coherence/) | **Keep** (full-space recall = coherence) |
+| **M2** hybrid cutoff | §4.3, §5.4 | [`option2_hybrid_layer_cutoff/`](./research/option2_hybrid_layer_cutoff/) | Optional (≤ +0.04 over M1) |
+| **K1** gather vs repack, in-engine latency | §4.5, §5.5 | [`xcut1_gather_vs_repack/`](./research/xcut1_gather_vs_repack/), [`inengine_checks/`](./research/inengine_checks/) | **Keep** (micro); masked still slower than plain |
+| **V1** verify ± overfetch | §4.6, §5.6 | [`xcut3_verify_pass/`](./research/xcut3_verify_pass/) | **Keep** with overfetch |
+| **M3** α-blend | §4.4, §5.7 | [`option4_weighted_blend/`](./research/option4_weighted_blend/) | **Skip** (best at α=0 ≡ M2) |
 
-Out of short-paper scope (mentioned as future / full-track only):
+Not reported in the paper (future work):
 
 | Idea | Folder | Notes |
 |------|--------|-------|
 | Projected index | [`option3_projected_index/`](./research/option3_projected_index/) | Future work (§6–7); ceiling measurable without Rust |
-| Visited-set divergence | [`xcut4_divergence/`](./research/xcut4_divergence/) | Full-paper plan only; not in short draft |
-| Full-track expansion | [`full_paper_plan/`](./full_paper_plan/) | Optional 12-page expansions — ignore for the short paper |
+| Visited-set divergence | [`xcut4_divergence/`](./research/xcut4_divergence/) | Not reported |
 
 Design writeups for each mechanism: [`../xqdrant_docs/`](../xqdrant_docs/).  
 Engine fork: [`../XQdrant/`](../XQdrant/).  
@@ -40,14 +39,16 @@ Follow the same order as §5 of the paper:
 
 1. **Attribution is a win** — run Tests A + C (latency–recall + depth *m*), or open
    [`research/step0_baseline_done/`](./research/step0_baseline_done/) for which root-suite
-   outputs map to Figures 2–3.
-2. **Focus rescoring ≠ traversal speedup** — Test D (§5.2 / Figure 4).
-3. **M1 collapses navigability** — `option1_naive_masked` (§5.3 / Figure 5).
-4. **M2 restores recall, not latency** — `option2_hybrid_layer_cutoff` (§5.4 / Figures 6–8).
-5. **K1 explains the latency ceiling** — `xcut1_gather_vs_repack` (§5.5 / Figure 9).
-6. **C1 explains the high-D recall ceiling** — `xcut2_subspace_coherence` (§5.6 / Figures 10–11).
-7. **V1 + overfetch is conditional** — `xcut3_verify_pass` (§5.7 / Figures 12–13).
-8. **M3 is dominated by M2** — `option4_weighted_blend` (§5.8 / Figure 14).
+   outputs map to Figure 2; in-engine cost in `inengine_checks` (§5.2).
+2. **Focus rescoring ≠ traversal speedup** — Test D (§5.2 / Figure 3).
+3. **M1's full-space recall equals coherence; subspace recall degrades only for small
+   focus sets** — `option1_naive_masked` (§5.3 / Figure 4).
+4. **The M2 cutoff barely matters** — `option2_hybrid_layer_cutoff` (§5.4 / Table 2).
+5. **Per-distance cost rules out a latency win** — `inengine_checks`,
+   `xcut1_gather_vs_repack` (§5.5 / Table 3, Figure 5).
+6. **V1 + overfetch recovers recall where coherence allows** — `xcut3_verify_pass`
+   (§5.6 / Figure 6).
+7. **M3 never beats pure masking** — `option4_weighted_blend` (§5.7 / Figure 7).
 
 Per-mechanism runners, flags, and canonical experiment folder names live in
 [`research/README.md`](./research/README.md).
@@ -91,8 +92,7 @@ DB_systems/
 ├── run_bench.sh / bench_*.py    ← attribution suite (Tests A–E)
 ├── fetch_sift.sh                ← SIFT1M download
 ├── research/                    ← one folder per paper mechanism (M1–V1, …)
-├── experiments/                 ← timestamped CSV/plots (local; gitignored)
-└── full_paper_plan/             ← optional long-track ideas (not short paper)
+└── experiments/                 ← timestamped CSV/plots (local; gitignored)
 ```
 
 ---

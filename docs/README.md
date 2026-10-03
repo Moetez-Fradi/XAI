@@ -19,7 +19,7 @@ This `docs/` folder is milestone / API scratch space — not the artifact index.
 | K1 | X1 / `xcut1_gather_vs_repack` | Gather vs repack kernel |
 | C1 | X2 / `xcut2_subspace_coherence` | Subspace↔full coherence |
 | V1 | X3 / `xcut3_verify_pass` | Verify ± overfetch |
-| — | X4 / `xcut4_divergence` | Visited-set divergence (full-paper only) |
+| — | X4 / `xcut4_divergence` | Visited-set divergence (future work) |
 
 ## Files here
 
@@ -27,5 +27,3 @@ This `docs/` folder is milestone / API scratch space — not the artifact index.
 |------|----------|
 | [`steps.md`](./steps.md) | Option/X execution plan (historical) |
 | [`working.md`](./working.md) | API / milestone notes |
-
-Full-track expansion ideas: [`../DB_systems/full_paper_plan/steps.md`](../DB_systems/full_paper_plan/steps.md).

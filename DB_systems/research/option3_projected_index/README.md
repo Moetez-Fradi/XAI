@@ -1,10 +1,11 @@
 # Future work — projected index (`option3_projected_index`)
 
-**Paper:** mentioned in §6–7 as the natural next step; **not** part of the short-paper
-eval (no M-name). Folder kept for the ceiling measurement harness.
+**Paper:** mentioned in §6–7 as the natural next step; **not** part of the paper's
+evaluation (no M-name). Folder kept for the ceiling measurement harness.
 
 **Idea:** build a dedicated HNSW over projected (focus-dim-only) vectors per registered
-focus set — sidesteps M1 navigability failure, at memory/build cost per palette entry.
+focus set — avoids the small-focus-set recall loss and the gather cost of masked
+traversal, at memory/build cost per palette entry.
 
 **Status:** not implemented as an XQdrant feature. This script measures the *ceiling*
 today by creating a stock collection over projected vectors (recall / build time /
@@ -24,4 +25,4 @@ Output: `experiments/<ts>__option3_projected_index__recall_memory_buildtime/`.
 Compare against best **M2** cells at matching `D_sub/D`. Memory is a proxy
 (`points × D_sub × 4`), not RSS.
 
-Short-paper map: [`../README.md`](../README.md).
+Paper map: [`../README.md`](../README.md).
