@@ -26,5 +26,6 @@ python run_option4_alpha_sweep.py --mode http \
 |--------|----------------------------------------|
 | High-D | `2026-07-14_12-31-59__option4_weighted_blend__recall_speed_alpha` |
 | SIFT | `2026-07-14_12-37-16__option4_weighted_blend__recall_speed_alpha` |
+| SIFT, T=5, same index as M1/M2/V1 (paper Fig. 7) | `2026-10-02_17-39-44__option4_weighted_blend__recall_speed_alpha` |
 
 See also: [`../README.md`](../README.md).

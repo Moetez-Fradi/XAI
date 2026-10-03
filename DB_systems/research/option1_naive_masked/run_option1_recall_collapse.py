@@ -4,7 +4,14 @@ Step 1 / Option 1 — Naive full-masked traversal: recall-collapse characterizat
 
 No XQdrant Rust change required: the shipped ``focus.masked = true`` already masks
 ALL HNSW layers, which *is* Option 1. This script sweeps the subspace ratio and
-measures where recall collapses relative to full-vector ground truth.
+measures recall against BOTH ground truths, plus exact coherence:
+
+  * subspace GT — did masked traversal find the focus-metric neighbours (navigability)?
+  * full GT     — do those neighbours coincide with the full-space ones?
+  * coherence   — |exact subspace top-k ∩ exact full top-k| / k (no index involved).
+
+If full-GT recall tracks coherence while subspace-GT recall stays high, the low
+full-GT numbers are a ground-truth mismatch, not a navigability failure.
 
 Metric folder: experiments/<ts>__option1_naive_masked__recall_vs_ratio/
 
@@ -75,6 +82,9 @@ def main() -> int:
             client = cr.ResearchClient(
                 dataset, args.qdrant_url, xqdrant_url, provision=not args.no_provision
             )
+            if not args.no_provision:
+                print(f"  Waiting for index build (D={dim}, N={dataset.num_vectors})...")
+                client.wait_for_indexing(expected_points=dataset.num_vectors)
             warm_q, _ = cr.select_queries(dataset, min(200, args.queries), seed=cr.RANDOM_SEED)
             client.warmup(warm_q, len(warm_q))
 
@@ -85,13 +95,18 @@ def main() -> int:
 
             for ratio in args.ratios:
                 dims = cr.subspace_indices(dim, ratio, seed=seed)
+                subspace_gt = cr.SubspaceGT(dataset.vectors, dims, distance=dataset.distance)
                 lat = LatencyStats()
                 recalls: list[float] = []
+                sub_recalls: list[float] = []
+                coherences: list[float] = []
                 unsupported = 0
 
                 for local_i, q in enumerate(queries):
                     src = int(q_idx[local_i])
                     gt_ids = cr.full_top_k(dataset, src, q, args.k, norms)
+                    sub_gt_ids, _ = subspace_gt.top_k(q, args.k)
+                    coherences.append(cr.recall_at_k(sub_gt_ids, gt_ids, args.k))
                     if args.mode == "http":
                         body = cr.focus_body(q, args.k, args.ef_search, dims, masked=True)
                         out = client.query(body)
@@ -99,11 +114,13 @@ def main() -> int:
                             unsupported += 1
                             continue
                         lat.record(out.latency_ns)
-                        recalls.append(cr.recall_at_k(out.result.ids, gt_ids, args.k))
+                        ids = out.result.ids
                     else:
                         res, ns, _ = cr.simulated_masked(q, dataset, args.k, dims)
                         lat.record(ns)
-                        recalls.append(cr.recall_at_k(res.ids, gt_ids, args.k))
+                        ids = res.ids
+                    recalls.append(cr.recall_at_k(ids, gt_ids, args.k))
+                    sub_recalls.append(cr.recall_at_k(ids, sub_gt_ids, args.k))
 
                 pct = lat.percentiles_ms()
                 trial_rows.append({
@@ -115,6 +132,10 @@ def main() -> int:
                     "ef_search": args.ef_search,
                     "k": args.k,
                     "masked_recall_vs_full": float(np.mean(recalls)) if recalls else float("nan"),
+                    "masked_recall_vs_subspace": (
+                        float(np.mean(sub_recalls)) if sub_recalls else float("nan")
+                    ),
+                    "coherence": float(np.mean(coherences)) if coherences else float("nan"),
                     "masked_p50_ms": pct["p50"],
                     "masked_p95_ms": pct["p95"],
                     "unsupported_queries": unsupported,
@@ -123,7 +144,9 @@ def main() -> int:
                 tag = " [SIMULATED]" if args.mode == "simulated" else ""
                 print(
                     f"  trial={trial} D={dim} ratio={ratio:>4}: "
-                    f"recall={trial_rows[-1]['masked_recall_vs_full']:.3f} "
+                    f"recall_full={trial_rows[-1]['masked_recall_vs_full']:.3f} "
+                    f"recall_sub={trial_rows[-1]['masked_recall_vs_subspace']:.3f} "
+                    f"coherence={trial_rows[-1]['coherence']:.3f} "
                     f"p50={pct['p50']:.3f}ms{tag}"
                     + (f"  ({unsupported} unsupported)" if unsupported else "")
                 )
@@ -136,19 +159,22 @@ def main() -> int:
         )
 
         prefix = "[SIMULATED] " if args.mode == "simulated" else ""
+        series_fields = {
+            "M1 recall@K (vs subspace GT)": "masked_recall_vs_subspace",
+            "M1 recall@K (vs full GT)": "masked_recall_vs_full",
+            "Coherence (exact, no index)": "coherence",
+        }
         cr.line_plot(
             [r["subspace_ratio"] for r in rows],
-            {"Masked recall@K (vs full GT)": [r["masked_recall_vs_full"] for r in rows]},
+            {label: [r[f] for r in rows] for label, f in series_fields.items()},
             yerr={
-                "Masked recall@K (vs full GT)": [
-                    r.get("masked_recall_vs_full_std", 0.0) for r in rows
-                ]
+                label: [r.get(f"{f}_std", 0.0) for r in rows]
+                for label, f in series_fields.items()
             },
             xlabel="Subspace ratio (D_sub / D)",
-            ylabel="Recall@K vs full-vector GT (mean ± std)",
-            title=f"{prefix}M1 recall collapse (D={dim}, n={args.trials})",
+            ylabel="Recall@K / coherence (mean ± std)",
+            title=f"{prefix}M1 recall by ground truth (D={dim}, n={args.trials})",
             stem=f"option1_recall_vs_ratio_d{dim}",
-            hline=0.8,
         )
 
     print(f"[option1] done -> {run.root}")

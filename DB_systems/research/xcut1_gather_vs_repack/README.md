@@ -6,8 +6,10 @@
 **Design doc:** [`../../../xqdrant_docs/X1.md`](../../../xqdrant_docs/X1.md)
 
 **What it proves:** gather is faster than repack-then-score in ns/op microbenchmarks
-(~1.1–1.8×), but re-running **M2** with gather still yields no end-to-end cell &gt; 1× —
-so the wall-clock bottleneck is traversal overhead, not masked arithmetic.
+(~1.1–1.8×), but masked search still runs at 0.70–0.89× of plain speed in-engine. At
+ratio 1.0, masked search returns the same results as plain search (same traversal) yet
+takes 1.94 vs 1.23 ms server-side: a gathered distance costs more than the contiguous
+full-vector kernel, which is what rules out a latency win.
 
 ## Run (bench + plot)
 

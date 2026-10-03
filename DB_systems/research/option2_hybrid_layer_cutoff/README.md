@@ -8,8 +8,14 @@
 **Semantics:** layer `ℓ` uses masked distance iff `ℓ < L`; otherwise full distance.
 `L=0` ≡ plain nearest; omit cutoff + `masked=true` ≡ **M1** (all layers masked).
 
-**What it proves:** full-distance coarse layers restore navigability (esp. SIFT);
-end-to-end speedup vs full search still stays &lt; 1 (motivates **K1** / bottleneck claim).
+**What it proves:** on one SIFT1M index, the cutoff barely changes subspace recall
+relative to M1 (at most +0.04 at ratio 0.1, ≤0.01 at ≥0.25; `L=6` reproduces M1), so
+full-distance coarse layers are not what limits small focus sets. On the i.i.d. synthetic
+D=768 corpus, plain search itself reaches only 0.19 Recall@10 at ef=128, so that corpus
+cannot inform navigability. Speedup vs full search stays < 1 (see **K1** / in-engine timing).
+
+Recall is measured against **subspace** GT; compare with M1 only on the same index
+(absolute recall varies across index builds).
 
 ## Run
 
@@ -29,5 +35,10 @@ Prefer server with `XQDRANT_MASKED_KERNEL=gather` (paper default / **K1**).
 | High-D + gather | `option2_highD_gather_d768_1536_n50k_q500_v1` |
 | SIFT + gather | `option2_sift1m_gather_q500_v1` |
 | High-D + repack | `option2_highD_d768_1536_n50k_q500_v1` |
+| SIFT, same index as M1/M3/V1, L=1..6, ratios 0.1–0.5, T=5 (paper Table 2) | `2026-10-03_15-41-13__option2_hybrid_layer_cutoff__recall_latency_layer_heatmap` |
+| Synthetic D=768, T=5 | `2026-10-03_16-07-19__option2_hybrid_layer_cutoff__recall_latency_layer_heatmap` |
+
+The 2026-10-02/03 runs were made on a second host (Ryzen 5 220, XQdrant `ed5ca79` in WSL2)
+with `RESEARCH_HTTP_CLOSE=1`; use their recall, not their client-side latency.
 
 See also: [`../README.md`](../README.md).

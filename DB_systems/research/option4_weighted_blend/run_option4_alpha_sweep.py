@@ -75,6 +75,9 @@ def main() -> int:
             client = cr.ResearchClient(
                 dataset, args.qdrant_url, xqdrant_url, provision=not args.no_provision,
             )
+            if not args.no_provision:
+                print(f"  Waiting for index build (D={dim}, N={dataset.num_vectors})...")
+                client.wait_for_indexing(expected_points=dataset.num_vectors)
             warm_q, _ = cr.select_queries(dataset, min(200, args.queries), seed=cr.RANDOM_SEED)
             client.warmup(warm_q, len(warm_q))
 
@@ -174,6 +177,28 @@ def main() -> int:
                 stem=f"option4_alpha_recall_d{dim}_layer{layer}",
                 hline=None,
             )
+
+        # All cutoffs on one panel (paper figure).
+        combined: dict[str, list[float]] = {}
+        combined_err: dict[str, list[float]] = {}
+        for layer in args.layers:
+            lr = sorted(
+                [r for r in rows if int(r["mask_from_layer"]) == layer],
+                key=lambda r: float(r["alpha"]),
+            )
+            label = f"recall (mask_from_layer={layer})"
+            combined[label] = [float(r["recall_at_k"]) for r in lr]
+            combined_err[label] = [float(r.get("recall_at_k_std", 0.0) or 0.0) for r in lr]
+        cr.line_plot(
+            sorted({float(r["alpha"]) for r in rows}),
+            combined,
+            yerr=combined_err,
+            xlabel="alpha (0 = focus only, 1 = full distance)",
+            ylabel="Recall@K (subspace GT, mean ± std)",
+            title=f"{prefix}M3 blend recall (D={dim}, ratio={args.ratio}, n={args.trials})",
+            stem=f"option4_alpha_recall_d{dim}",
+            hline=None,
+        )
 
     print(f"[option4] done -> {run.root}")
     return 0

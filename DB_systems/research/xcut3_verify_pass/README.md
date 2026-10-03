@@ -8,9 +8,13 @@
 **What it proves:**
 
 - At overfetch **m=1**, Recall@k is unchanged (same candidate set; only scores/order).
-- At **m&gt;1** on coherent data (SIFT, hybrid *L*=1), full-space recall recovers at a
-  large latency cost (~+45 ms p50 at m=8).
-- On low-coherence high-D data, overfetch cannot rescue recall (**C1** predicts this).
+- At **m&gt;1** on coherent data (SIFT, hybrid *L*=1), full-space recall recovers
+  (0.48 → 0.91 at ratio 0.75, m=8) for +0.16–0.26 ms of server-side time.
+- The ~+45 ms p50 reported by earlier runs is a client-side TCP delayed-ACK stall on the
+  larger (limit=80) response over a keep-alive connection, not engine work. Measure with
+  `RESEARCH_HTTP_CLOSE=1` or Qdrant's server-side `time` field.
+- On the synthetic high-D corpus overfetch cannot rescue recall: plain search there only
+  reaches 0.19 Recall@10.
 
 ## Run
 
@@ -38,6 +42,7 @@ python run_xcut3_verify.py --mode http \
 |--------|----------------------------------------|
 | High-D | `2026-07-14_09-34-50__xcut3_highD_fullGT_overfetch_hybrid_v1` |
 | SIFT | `2026-07-14_09-46-22__xcut3_sift_fullGT_overfetch_hybrid_v1` |
+| SIFT, T=5, same index as M1/M2/M3 (paper Fig. 6) | `2026-10-02_17-56-19__xcut3_verify_pass__verify_recall_recovery` |
 
 Ignore earlier `xcut3_verify_pass` folders that used subspace-GT-only or simulated mode.
 

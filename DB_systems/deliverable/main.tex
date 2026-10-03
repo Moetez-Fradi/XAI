@@ -10,6 +10,7 @@
 %%  - ensure title still starts with "[Short Paper]"
 %%  - upload artifacts zip OR a no-access-monitoring repo link on CMT
 %%  - keep body ≤ 6 pages; Artifacts + references are unlimited
+%%  - no \pending{...} left:  grep -n 'pending{' main.tex
 
 %% balance=false: acmart otherwise auto-\balance's the last page into two
 %% short columns when only a few references overflow.
@@ -29,6 +30,7 @@
 
 \usepackage{graphicx}
 \usepackage{array}
+\usepackage{xcolor}
 \graphicspath{{figures/}}
 
 %% Allow breaks after \_ so long identifiers wrap in-column.
@@ -37,6 +39,9 @@
     \renewcommand{\_}{\textunderscore\allowbreak}%
     #1%
   }}
+
+%% Values still to be filled in by the author (rendered red).
+\newcommand{\pending}[1]{\textcolor{red}{#1}}
 
 \begin{document}
 
@@ -59,33 +64,31 @@
 Vector databases return opaque scalar similarities over high-dimensional
 embeddings, giving practitioners no coordinate-level explanation of a match and
 no way to restrict HNSW traversal itself to a dynamic focus subspace. We present
-\textbf{XQdrant}, an extension of the Qdrant engine addressing both problems, and
-we report results for each honestly rather than only where they are favorable.
+\textbf{XQdrant}, an extension of the Qdrant engine that addresses both.
 
-\emph{Attribution} is unambiguously positive: \texttt{with\_dims\_explained}
-computes exact top-$m$ per-dimension score decomposition in-database, avoiding
-client-side vector egress, and is recall-neutral against vanilla Qdrant while
-running $\sim$1.8$\times$ faster than post-query extraction at encoder-scale
-widths ($D\in\{768,1536\}$).
+\emph{Attribution}: \texttt{with\_dims\_explained} computes exact top-$m$
+per-dimension score decomposition in-database, avoiding client-side vector
+egress. It leaves the ranked result unchanged, adds about 0.4\,ms of in-engine
+time independent of $m$, and runs $\sim$1.8$\times$ faster end to end than
+post-query extraction at encoder-scale widths ($D\in\{768,1536\}$).
 
-\emph{Masked-distance HNSW traversal} is a mixed result, and we treat that as
-the paper's second contribution: a systems-level characterization of \emph{why}
-subspace-restricted traversal is harder than it looks. Naive all-layer masking
-collapses recall (SIFT1M mean Recall@10 $\approx 0.012$ at
-$D_{\mathrm{sub}}/D=0.1$) because HNSW's graph edges encode full-space
-proximity. A hybrid design that keeps full-distance routing on coarse layers
-and masks only near the base layer (\texttt{mask\_from\_layer}) restores
-navigability (SIFT mean recall $0.90$--$0.995$ for cutoffs $\geq 1$) but does
-\emph{not} yield end-to-end latency wins, because graph descent remains
-dominated by I/O and candidate-set bookkeeping rather than distance arithmetic;
-a dedicated SIMD gather kernel wins microbenchmarks (1.1--1.8$\times$ over
-repack-then-score) without changing this. We further show that
-subspace/full-space $k$-NN \emph{coherence} predicts when a cheap verification
-pass can recover full-space recall, and that an $\alpha$-weighted blend of full
-and masked scores is strictly dominated by a hard layer cutoff.
-
-We release a reproducible harness and an experiment index so each of these
-positive and negative findings can be independently reproduced or cited.
+\emph{Masked-distance HNSW traversal} scores only the focus subspace during
+descent over an unmodified full-space graph, and evaluating it requires two
+ground truths. Against full-space ground truth, masked search on SIFT1M scores
+exactly the subspace/full-space $k$-NN \emph{coherence} ($0.012$ vs.\ $0.013$
+at $D_{\mathrm{sub}}/D=0.1$), a property of the data rather than a navigation
+failure. Against subspace ground truth, it finds the focus-metric neighbors
+with Recall@10 of at least $0.91$ when the focus set covers half the dimensions
+or more, but $0.77$ at a quarter and about $0.4$ at a tenth; keeping
+full-distance routing on the upper layers (\texttt{mask\_from\_layer}) changes
+this by at most $0.04$. In-engine, masked search runs at $0.70$--$0.89\times$
+the speed of plain search: with every dimension in focus it returns identical
+results yet takes $1.6\times$ as long, so the per-distance cost of
+non-contiguous scoring, not traversal, rules out a latency win. Overfetch plus
+full-distance verification recovers full-space recall where coherence allows
+($0.48\rightarrow 0.91$ at $D_{\mathrm{sub}}/D=0.75$) for under 0.3\,ms, and an
+$\alpha$-weighted full/masked blend never improves on pure masking. We release
+the harness and an experiment index that maps each claim to a script.
 \end{abstract}
 
 \begin{CCSXML}
@@ -136,16 +139,17 @@ stock HNSW always evaluates full $D$-dimensional distances during graph descent.
 Rescoring on $\mathcal{F}$ after full-vector preselection improves semantic
 specificity but, as we show, cannot reduce traversal cost.
 
-\textbf{XQdrant} addresses the first gap successfully and investigates the
-second rigorously. For attribution, \texttt{with\_dims\_explained} attaches
-exact top-$m$ coordinate terms to search results in-database. For subspace
-routing, \texttt{nearest.focus} with \texttt{masked=true} evaluates reduced
-distances \emph{during} HNSW traversal, not just after it, via a hybrid layer
-cutoff, gather-based SIMD kernels, an optional verify/overfetch pass, and a
-full/masked score blend. Where the second contribution falls short of a
-latency win, we do not paper over it: we identify the mechanism (navigability
-vs.\ arithmetic cost) and report exactly which configurations are and are not
-worth shipping.
+\textbf{XQdrant} addresses the first gap and characterizes the second. For
+attribution, \texttt{with\_dims\_explained} attaches exact top-$m$ coordinate
+terms to search results in-database. For subspace routing,
+\texttt{nearest.focus} with \texttt{masked=true} evaluates reduced distances
+\emph{during} HNSW traversal, not just after it, with a hybrid layer cutoff,
+gather-based SIMD kernels, an optional verify/overfetch pass, and a
+full/masked score blend. Evaluating masked traversal requires care about which
+neighbors count as correct. Recall against full-space ground truth measures
+whether two metrics agree; recall against subspace ground truth measures
+whether traversal navigates. Keeping the two apart changes the conclusions
+(Section~\ref{sec:eval-gt}).
 
 \subsection*{Contributions}
 \vspace{-0.35em}
@@ -154,17 +158,18 @@ worth shipping.
   \setlength{\parsep}{0pt}
   \setlength{\topsep}{0.15em}
   \setlength{\partopsep}{0pt}
-  \item \textbf{In-database attribution (positive result).} Exact score
-    decomposition with order-statistic top-$m$ selection; recall-neutral vs.\
-    vanilla Qdrant and $\sim$1.8$\times$ faster than post-query extraction.
-  \item \textbf{Masked-distance HNSW traversal (mechanism-level negative
-    result).} A hybrid layer-cutoff design that restores navigability where
-    naive masking collapses it, but does not translate into end-to-end
-    speedup; and an explanation, grounded in coherence and kernel
-    microbenchmarks, of why.
-  \item \textbf{Coherence as a predictive diagnostic.} Subspace/full-space
-    $k$-NN overlap predicts when a cheap verify pass can recover full-space
-    recall and when it cannot, independent of the traversal strategy used.
+  \item \textbf{In-database attribution.} Exact score decomposition with
+    order-statistic top-$m$ selection; about 0.4\,ms in-engine and
+    $\sim$1.8$\times$ faster than post-query extraction, with the ranked
+    result unchanged.
+  \item \textbf{Masked-distance HNSW traversal, evaluated under two ground
+    truths.} On SIFT1M it navigates well for large focus sets and degrades
+    for small ones, a layer cutoff barely changes this, and it never beats
+    plain search; we trace the latency gap to per-distance cost.
+  \item \textbf{Coherence as the reference for full-space recall.}
+    Subspace/full-space $k$-NN overlap matches the full-space recall of
+    masked search and predicts when a verify pass can recover full-space
+    neighbors, independent of the traversal strategy.
   \item \textbf{Reproducible artifacts.} A public experiment index and harness
     (Section~\ref{sec:artifacts}) mapping every claim above to a canonical
     script and dataset.
@@ -196,21 +201,23 @@ SHAP~\cite{lundberg2017shap} or LIME~\cite{ribeiro2016lime}.
 
 Let $N_k^{\mathrm{full}}(q)$ and $N_k^{\mathcal{F}}(q)$ denote exact $k$-NN sets
 under the full metric and under focus set $\mathcal{F}$. We define
-\emph{coherence} as $|N_k^{\mathrm{full}}\cap N_k^{\mathcal{F}}|/k$, and refer
-to the diagnostic built around this quantity as \textbf{C1} in
-Section~\ref{sec:eval-coherence}. Coherence is the quantity that determines,
-independent of any particular traversal strategy, whether full-space neighbors
-can even in principle be recovered from subspace-guided search; it recurs
-throughout Section~\ref{sec:eval} as the explanatory variable behind several
-otherwise-surprising results.
+\emph{coherence} as $|N_k^{\mathrm{full}}\cap N_k^{\mathcal{F}}|/k$ and call
+this diagnostic \textbf{C1}. Coherence is the full-space Recall@$k$ that an
+\emph{exact} subspace search achieves; it depends on the data and
+$\mathcal{F}$, not on any index. Masked traversal thus has two accuracy
+measures. \emph{Subspace recall}, against $N_k^{\mathcal{F}}$, asks whether
+traversal found the focus-metric neighbors, i.e., whether the graph remains
+navigable. \emph{Full-space recall}, against $N_k^{\mathrm{full}}$, asks
+whether those neighbors are also full-space neighbors; for a search that
+returns $N_k^{\mathcal{F}}$ exactly, it equals coherence.
 
 %=============================================================================
 \section{In-Database Attribution}
 \label{sec:attribution}
 
 XQdrant injects attribution at the collection coordinator after shard merge,
-with an early return when \texttt{with\_dims\_explained} is absent, and zero
-overhead on the unmodified hot path. Per explained hit, Algorithm~\ref{alg:attribution}
+with an early return when \texttt{with\_dims\_explained} is absent, so other
+requests take the unmodified path. Per explained hit, Algorithm~\ref{alg:attribution}
 materializes $D$ terms and selects the top-$m$ by absolute contribution in
 average $\mathcal{O}(D)$ time via Rust's order-statistic selection
 (\breakablecode{select\_nth\_unstable}).
@@ -283,15 +290,17 @@ simultaneous \texttt{with\_dims\_explained} on masked paths, and fail-fast if
 \subsection{M1: Naive All-Layer Masking}
 
 With \texttt{masked=true} and no cutoff, every HNSW comparison during descent
-uses only coordinates in $\mathcal{F}$. This is the cheapest semantic change to
-implement, and the one most likely to be tried first, which is precisely why
-we report it as a cautionary baseline rather than a proposal: it destroys
-navigability whenever the focus metric disagrees with the full-space geometry
-the graph was built on (Section~\ref{sec:eval-m1}).
+uses only coordinates in $\mathcal{F}$. This is the simplest semantic change
+and the natural first attempt. The concern is navigability: graph edges encode
+full-space proximity, so greedy descent under a different metric has no
+guarantee of reaching the focus-metric neighbors. Section~\ref{sec:eval-gt}
+tests this directly.
 
 \subsection{M2: Hybrid Layer Cutoff}
 
-Layer $\ell$ uses the masked scorer iff $\ell < L$ for cutoff
+M2 keeps full-distance routing where the graph is coarsest and masks only near
+the base layer, where the final candidates are chosen. Layer $\ell$ uses the
+masked scorer iff $\ell < L$ for cutoff
 $L ={}$\breakablecode{mask\_from\_layer}; otherwise full distance is used.
 $L{=}0$ recovers plain (unmasked) nearest search; a large $L$ recovers M1.
 The implementation builds dual raw scorers inside \texttt{FilteredScorer}
@@ -331,68 +340,65 @@ Section~\ref{sec:eval-verify}.
 \section{Experimental Evaluation}
 \label{sec:eval}
 
-We structure this section as an argument rather than a list of runs: each
-subsection's result motivates the next question. Table~\ref{tab:keep}
-previews where this argument ends, so it can be read as a map before the
-detailed results.
+Table~\ref{tab:keep} at the end of this section summarizes the verdict for
+each mechanism.
 
 \subsection{Setup}
 
-\paragraph{Hardware and protocol.} Both suites run on the \emph{same} Linux
-x86\_64 host via HTTP against local release binaries (vanilla Qdrant and
-XQdrant), with gather as the default masked kernel unless a kernel comparison
-is the subject. Absolute latencies are therefore comparable across suites.
-Unless a caption says otherwise, each reported configuration is the mean of
-$T{=}5$ independent trials that resample the timed query set (and, where
-applicable, the focus-dimension subset) under distinct seeds; we quote sample
-standard deviation inline or as error bars. Within each trial, latency
-summaries use the per-query p50 as before. Orchestration lives in the unified
-paper bench script (Section~\ref{sec:artifacts}). Kernel microbenchmarks
-(Section~\ref{sec:eval-kernel}) are offline ns/op measurements on the same
-host class; the M3 $\alpha$-sweep figure is a canonical SIFT
-cutoff$\times\alpha$ panel whose qualitative ranking ($\alpha{=}0$ best)
-matches the hybrid M2 result.
+\paragraph{Hosts and protocol.} Host~A (\pending{CPU model, cores, RAM},
+Linux) runs the attribution suite against vanilla Qdrant (1.18.3-dev, commit
+\texttt{b4e9326}) and the kernel microbenchmarks. Host~B (AMD Ryzen~5~220,
+6~cores/12~threads, 15\,GB RAM) runs every masked-traversal experiment and all
+in-engine timings, with XQdrant at commit \texttt{ed5ca79} (opt-level~3, no
+LTO) in WSL2 Ubuntu~24.04; its plain-search baseline is XQdrant without focus
+parameters, which takes the unmodified Qdrant path. Collections use HNSW with
+$M{=}16$ and \texttt{ef\_construct}${=}200$, no quantization, and, unless
+swept, \texttt{ef}${=}128$; the masked kernel is gather unless the kernel is
+the subject. All masked-traversal comparisons on a corpus share one index, so
+differences between mechanisms are not confounded by index construction.
+Unless a caption says otherwise, each configuration is the mean of $T{=}5$
+trials with distinct seeds that redraw the focus set and, where applicable,
+the query sample, with sample standard deviation as error bars. A focus set at
+ratio $r$ is a uniformly random subset of $\mathrm{round}(rD)$ coordinates.
+In-engine latency is Qdrant's server-side request time, which excludes HTTP
+and serialization; client round trips over keep-alive connections can add a
+${\sim}40$\,ms TCP delayed-ACK stall for multi-packet messages, which would
+swamp the sub-millisecond effects we measure.
 
 \paragraph{Attribution suite.} Synthetic corpora with $N{=}10\mathrm{k}$
 vectors and $Q{=}500$ queries at $D\in\{768,1536\}$; baselines are vanilla
-Qdrant, post-query client-side top-$m$ extraction, and XQdrant.
+Qdrant and post-query extraction, which fetches the result vectors
+(\breakablecode{with\_vector}) and computes the top-$m$ terms in the client.
 
-\paragraph{Masked-distance suite.} Corpora: SIFT1M ($D{=}128$) and synthetic
-data with $N{=}50\mathrm{k}$ at $D\in\{768,1536\}$, $Q{=}500$, $k{=}10$,
-and \texttt{ef}=128. Scripts, CSVs, and the experiment index for every claim
-below are linked from Section~\ref{sec:artifacts}.
+\paragraph{Masked-traversal suite.} SIFT1M~\cite{jegou2011pq} ($D{=}128$,
+Euclidean, $N{=}1\mathrm{M}$, $Q{=}500$, $k{=}10$), on which plain HNSW
+search reaches Recall@10 of $0.99$, and a synthetic corpus with
+$N{=}50\mathrm{k}$ at $D{=}768$: i.i.d.\ standard-normal vectors,
+$\ell_2$-normalized, scored by Dot product.
 
 \subsection{Attribution and Focus Rescoring Are Not the Same Problem}
 \label{sec:eval-attr}
 
-Figure~\ref{fig:latency-recall} shows \texttt{with\_dims\_explained} preserves
-the latency--recall frontier vs.\ vanilla Qdrant at $D{=}768$ (mean Recall@10
-gap $<0.01$ across $T{=}5$ trials). Figure~\ref{fig:attribution-depth} shows
+Attribution annotates an already-ranked result, so it cannot change recall:
+at $D{=}768$, Recall@10 is identical for vanilla Qdrant and for XQdrant with
+$m{=}10$ attributions at every \texttt{ef} we tested. In-engine (host~B), it
+adds $0.36$--$0.40$\,ms to a $2.45$\,ms plain search, about 15\%, and the
+cost barely depends on $m$ ($2.81$, $2.81$, and $2.85$\,ms for $m=1$, $10$,
+$50$). The relevant comparison is post-query extraction, the only
+alternative available to a client: Figure~\ref{fig:attribution-depth} shows
 in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
-($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits
-at $6.87$--$7.03$\,ms ($\approx 1.78\times$). This confirms attribution as a
-clean systems win. But Figure~\ref{fig:subspace-rescore} shows that
-\texttt{nearest.focus} \emph{rescoring}, the natural first attempt at
-subspace search, using the same full-preselection machinery, yields speedup
-$<1$ ($0.80$--$0.84$). Rescoring reduces the dimensionality of the arithmetic
-but not the traversal it depends on. This negative result is what motivates
-attacking the traversal itself, which is the subject of the rest of this
-section.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.92\linewidth]{plot1_latency_recall_d768.png}
-  \caption{Attribution suite: latency--recall at $D{=}768$ with
-    \texttt{with\_dims\_explained} ($m{=}10$). Points are mean$\pm$std over
-    $T{=}5$ query-sample trials.}
-  \label{fig:latency-recall}
-\end{figure}
+($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits at
+$6.87$--$7.03$\,ms ($\approx 1.78\times$). Figure~\ref{fig:subspace-rescore}
+shows that \texttt{nearest.focus} \emph{rescoring}, which reuses full-vector
+preselection, yields speedup $<1$ ($0.80$--$0.84$; $0.80$ in-engine on
+SIFT1M): it reduces the dimensionality of the arithmetic but not the
+traversal it depends on. This motivates masking the traversal itself.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{plot3_attribution_depth_d768.png}
-  \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$).
-    Mean$\pm$std over $T{=}5$ trials.}
+  \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$,
+    host~A, client-observed). Mean$\pm$std over $T{=}5$ trials.}
   \label{fig:attribution-depth}
 \end{figure}
 
@@ -400,188 +406,180 @@ section.
   \centering
   \includegraphics[width=0.92\linewidth]{plot4_subspace_speedup_d768.png}
   \caption{Focus \emph{rescoring} speedup $T_{\mathrm{full}}/T_{\mathrm{sub}}$
-    ($D{=}768$): values $<1$ show rescoring alone does not accelerate search
-    (mean$\pm$std, $T{=}5$).}
+    ($D{=}768$, host~A): values $<1$ show rescoring alone does not
+    accelerate search (mean$\pm$std, $T{=}5$).}
   \label{fig:subspace-rescore}
 \end{figure}
 
-\subsection{M1: Naive Masking Breaks Navigability}
-\label{sec:eval-m1}
+\subsection{M1 and C1: Two Questions, Two Ground Truths}
+\label{sec:eval-gt}
 
-If rescoring cannot help, the natural next attempt is to mask distance
-\emph{during} traversal (M1). Figure~\ref{fig:m1} shows this fails sharply on
-SIFT1M: mean Recall@10 against full-space ground truth is $0.012$, $0.077$,
-$0.250$, $0.490$, and $0.998$ ($\pm\!0.002$--$0.014$) at subspace ratios
-$0.1$, $0.25$, $0.5$, $0.75$, and $1.0$. This is the navigability breakdown
-predicted in Section~\ref{sec:background}: graph edges encode full-space
-proximity, and masked greedy descent has no guarantee of reaching the region
-containing the true neighbors once that proximity assumption is violated.
+If rescoring cannot help, the next step is to mask distance \emph{during}
+traversal (M1). Figure~\ref{fig:m1} evaluates M1 on SIFT1M against both
+ground truths, together with exact coherence. Against full-space ground
+truth, Recall@10 falls from $0.99$ at ratio $1.0$ to $0.490$, $0.253$,
+$0.078$, and $0.012$ at ratios $0.75$, $0.5$, $0.25$, and $0.1$; read alone,
+this looks like a navigability collapse. But coherence, computed without any
+index, matches it at every ratio ($0.490$, $0.250$, $0.075$, $0.013$): M1
+scores what a correct subspace search would, and the full-space numbers
+measure disagreement between the two metrics, not a failure to navigate.
+Against subspace ground truth, M1 finds the focus-metric neighbors with
+Recall@10 of $0.98$ and $0.93$ at ratios $0.75$ and $0.5$, but only $0.77$ at
+$0.25$ and $0.38$ at $0.1$. Navigability therefore holds for large focus sets
+and degrades for small ones, a much milder effect than the full-space numbers
+suggest.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.92\linewidth]{fig_option1_sift.png}
-  \caption{M1 on SIFT1M: Recall@10 vs.\ full-space ground truth as
-    $D_{\mathrm{sub}}/D$ shrinks (mean$\pm$std over $T{=}5$ trials).}
+  \includegraphics[width=0.92\linewidth]{fig_m1_sift_gt.png}
+  \caption{M1 on SIFT1M: Recall@10 against subspace and full-space ground
+    truth, and exact coherence (no index), vs.\ ratio (mean$\pm$std,
+    $T{=}5$). The full-space curve lies on the coherence curve.}
   \label{fig:m1}
 \end{figure}
 
-\subsection{M2: A Hybrid Cutoff Restores Navigability, Not Latency}
+\subsection{M2: The Cutoff Barely Matters}
 \label{sec:eval-m2}
 
-M2 keeps full-distance routing on coarse layers, hypothesizing that most of
-navigability is determined there. Figure~\ref{fig:m2} confirms this: on SIFT,
-cutoffs $L\geq 1$ recover $0.90$--$0.995$ mean recall (subspace-restricted
-ground truth; across-trial std $\le 0.004$), while $L{=}0$ tracks the low
-coherence floor. On high-$D$ synthetic data the same cutoff lifts
-otherwise-collapsed cells (e.g., $D{=}768$, ratio 0.25:
-$\sim$0.01 $\rightarrow$ $\sim$0.20) but plateaus near 0.15--0.22; a ceiling
-we explain via coherence in Section~\ref{sec:eval-coherence}.
+Does keeping full-distance routing on the upper layers recover the subspace
+neighbors that M1 misses? Table~\ref{tab:m2} compares cutoffs on the same
+SIFT1M index. It barely matters: $L{=}6$ reproduces M1 exactly, cutoffs
+$L{=}2$--$4$ gain $0.04$ at ratio $0.1$ ($0.42$ vs.\ $0.38$, within the
+across-trial spread), and no cutoff gains more than $0.01$ at larger ratios.
+Masking only the base layer ($L{=}1$) already loses as much as masking every
+layer, so the loss arises where both designs mask: the base-layer search under
+the focus metric. A larger \texttt{ef} for masked queries is the natural
+remedy, which we did not sweep.
 
-Critically, \textbf{end-to-end speedup vs.\ full search remains below 1 in
-every measured cell} (Figure~\ref{fig:m2-speed}), even using the gather kernel.
-Section~\ref{sec:eval-kernel} isolates why: the arithmetic savings from masking
-are real but small relative to the I/O and candidate-management cost that
-dominates HNSW wall-clock time.
+The synthetic $D{=}768$ corpus cannot inform this question. Plain full-space
+search on it reaches only $0.19$ Recall@10 at \texttt{ef}${=}128$, and masked
+search reaches $0.21$ subspace recall for every $L\geq 1$ and every ratio we
+tested ($0.25$--$0.75$): masking costs nothing there because the index is
+already lost without it. Its coherence is also lower than SIFT's ($0.006$ at
+ratio $0.1$ to $0.30$ at $0.75$).
 
-\begin{figure}[htbp]
+\begin{table}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{fig_option2_sift_recall.png}
-  \caption{M2 on SIFT1M: recall heatmap over \texttt{mask\_from\_layer}
-    $\times$ subspace ratio, gather kernel (cell text: mean$\pm$std).}
-  \label{fig:m2}
-\end{figure}
+  \caption{Subspace Recall@10 on SIFT1M by cutoff, one index, $T{=}5$.
+    Across-trial std is $\le 0.02$, except $0.05$--$0.08$ at ratio $0.1$.}
+  \label{tab:m2}
+  \small
+  \begin{tabular}{@{}lccc@{}}
+    \hline
+    \textbf{Design} & \textbf{ratio 0.1} & \textbf{0.25} & \textbf{0.5} \\
+    \hline
+    M1 (all layers masked) & 0.38 & 0.77 & 0.93 \\
+    M2, $L{=}1$ & 0.42 & 0.77 & 0.91 \\
+    M2, $L{=}2$--$4$ & 0.42 & 0.78 & 0.93 \\
+    M2, $L{=}5$ & 0.40 & 0.77 & 0.93 \\
+    M2, $L{=}6$ & 0.38 & 0.77 & 0.93 \\
+    \hline
+  \end{tabular}
+\end{table}
 
-\begin{figure}[htbp]
+\subsection{Latency: Per-Distance Cost Rules Out a Win}
+\label{sec:eval-latency}
+
+No masked configuration beats plain search (Table~\ref{tab:latency}).
+In-engine, masked search runs at $0.85$--$0.89\times$ the speed of plain
+search at ratio $0.25$ and at $0.70$--$0.75\times$ at ratio $0.75$, so it gets
+slower as the focus set grows. A masked request with $L{=}0$ runs at full
+speed, so the request path itself adds nothing. With every dimension in focus
+(ratio $1.0$), masked search returns the same result set as plain search for
+all 500 queries, so it traverses the same nodes, yet it takes $1.94$\,ms
+instead of $1.23$\,ms (M1; $1.84$\,ms at $L{=}1$). The gap is therefore
+per-distance cost: gathering coordinates from non-contiguous positions is
+slower than one contiguous SIMD pass over the full vector, and shrinking the
+focus set to a quarter of the dimensions does not make up the difference.
+Choosing gather over repack helps in isolation, by $1.24\times$, $1.14\times$,
+$1.42\times$, and $1.77\times$ at $D_{\mathrm{sub}}\in\{32,128,384,768\}$
+(Figure~\ref{fig:kernel}), but cannot close this gap. For masking to pay off,
+a masked distance must cost less than a full contiguous one, for example by
+laying registered focus dimensions out contiguously or by approximating
+distance comparisons~\cite{gao2023adsampling,chen2023finger}.
+
+\begin{table}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{fig_option2_d768_recall.png}
-  \caption{M2 on synthetic $D{=}768$: same sweep, showing the recall
-    plateau discussed in Section~\ref{sec:eval-coherence}.}
-  \label{fig:m2-d768}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.92\linewidth]{fig_option2_sift_speedup.png}
-  \caption{M2 SIFT end-to-end speedup vs.\ full search: no cell exceeds
-    $1\times$, despite recovered recall (mean$\pm$std).}
-  \label{fig:m2-speed}
-\end{figure}
-
-\subsection{K1: Kernel Choice Explains the Ceiling, Not the Floor}
-\label{sec:eval-kernel}
-
-Figure~\ref{fig:kernel} isolates the SIMD kernel question directly: gather is
-$\sim$1.24$\times$ / 1.14$\times$ / 1.42$\times$ / 1.77$\times$ faster than
-repack-then-score at $D_{\mathrm{sub}}\in\{32,128,384,768\}$ in ns/op
-microbenchmarks. Re-running the M2 sweep with gather instead of repack leaves
-recall unchanged and still produces \textbf{zero} end-to-end cells above
-$1\times$. This isolates the bottleneck to graph traversal overhead
-(candidate heap management, visited-set bookkeeping, memory access to
-non-contiguous graph pages) rather than the per-comparison arithmetic; the
-kernel is not the limiting factor, so faster kernels alone cannot close the
-gap identified in Section~\ref{sec:eval-m2}.
+  \caption{In-engine latency on SIFT1M (host~B): server-side p50 in ms over
+    500 queries (best of 3 per query) and speed relative to plain search.}
+  \label{tab:latency}
+  \small
+  \begin{tabular}{@{}lcc@{}}
+    \hline
+    \textbf{Query} & \textbf{ratio 0.25} & \textbf{ratio 0.75} \\
+    \hline
+    Plain full search & 1.25 (1.00$\times$) & 1.25 (1.00$\times$) \\
+    Focus rescoring (unmasked) & 1.56 (0.80$\times$) & 1.53 (0.81$\times$) \\
+    Masked, $L{=}0$ & 1.25 (1.00$\times$) & 1.23 (1.02$\times$) \\
+    M2, $L{=}1$ & 1.46 (0.85$\times$) & 1.79 (0.70$\times$) \\
+    M2, $L{=}3$ & 1.41 (0.89$\times$) & 1.67 (0.75$\times$) \\
+    M1 & 1.44 (0.87$\times$) & 1.69 (0.74$\times$) \\
+    V1, $L{=}1$, $m{=}8$ & 1.73 (0.72$\times$) & 1.95 (0.64$\times$) \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_xcut1_kernels.png}
-  \caption{K1: Masked Dot-product kernel throughput, repack vs.\ gather.}
+  \caption{K1: Masked Dot-product kernel cost, repack vs.\ gather (ns/op,
+    host~A).}
   \label{fig:kernel}
 \end{figure}
 
-\subsection{C1: Coherence Explains the Recall Ceiling}
-\label{sec:eval-coherence}
-
-Why does M2's recall plateau at 0.15--0.22 on high-$D$ synthetic data
-(Section~\ref{sec:eval-m2}) rather than approaching 1? Figure~\ref{fig:coherence}
-measures subspace/full-space exact top-10 overlap directly: it grows with
-ratio but stays low on synthetic $D{=}768$ ($\sim$0.007 $\rightarrow$ 0.30 from
-ratio 0.1 $\rightarrow$ 0.75); SIFT is higher (mean $0.013 \rightarrow 0.490$
-from ratio 0.1 $\rightarrow$ 0.75 under $T{=}5$).
-This is a property of the \emph{data and focus set}, not of the traversal
-algorithm: when the subspace and full-space neighbor sets barely overlap, no
-amount of navigability recovery can produce full-space-correct results,
-because the answers the two metrics agree on are simply different. This
-reframes Section~\ref{sec:eval-m2}'s plateau from an implementation
-limitation into an expected consequence of low coherence, and predicts when
-the verification pass in Section~\ref{sec:eval-verify} can and cannot help.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{fig_xcut2_sift.png}
-  \caption{C1: Subspace$\leftrightarrow$full exact top-10 overlap vs.\ ratio,
-    SIFT1M (mean$\pm$std, $T{=}5$).}
-  \label{fig:coherence}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{fig_xcut2_d768.png}
-  \caption{C1 on synthetic $D{=}768$: lower coherence throughout, consistent
-    with the lower recall ceiling in Figure~\ref{fig:m2-d768}.}
-  \label{fig:coherence-d768}
-\end{figure}
-
-\subsection{V1: Verify + Overfetch Trades Latency for Recall, Where Coherence Allows}
+\subsection{V1: Verify + Overfetch Recovers Recall Where Coherence Allows}
 \label{sec:eval-verify}
 
-Given that M2 cannot reach full-space recall on its own, can a post-traversal
-verification pass close the gap? At overfetch $m{=}1$, masked and verified
-Recall@10 are identical, as predicted in Section~\ref{sec:masked}; reordering
-a fixed candidate set cannot change which candidates it contains. At $m{=}8$ on
-SIFT with hybrid $L{=}1$ (high coherence regime), full-space recall rises
-substantially: $0.26\rightarrow 0.66$ at ratio 0.5 and $0.45\rightarrow 0.89$ at
-ratio 0.75 (Figure~\ref{fig:verify}), but at a cost of roughly $+45$\,ms p50
-($\sim$1.5\,ms $\rightarrow$ $\sim$46\,ms); overfetching by $8\times$ and
-fully rescoring is not cheap. On high-$D$ synthetic data (low coherence),
-recall stays $\leq \sim$0.19 even at $m{=}8$: exactly the outcome
-Section~\ref{sec:eval-coherence} predicts, since no amount of overfetch
-recovers neighbors that the subspace metric never surfaces as candidates in
-the first place.
+Since masked search returns subspace neighbors, can a post-traversal
+full-distance pass recover the full-space ones? At overfetch $m{=}1$, masked
+and verified Recall@10 are identical, as predicted in
+Section~\ref{sec:masked}. At $m{=}8$ on SIFT1M with $L{=}1$, full-space
+recall rises well above the coherence level, from $0.24$ to $0.61$ at ratio
+$0.5$ and from $0.48$ to $0.91$ at ratio $0.75$ (Figure~\ref{fig:verify});
+with every layer masked the results are similar ($0.64$ and $0.93$). The
+candidate pool is now the top-$80$ under the focus metric, and verification
+recovers whatever part of the full-space top-$10$ it contains; at ratio $0.1$
+that part is small ($0.01\rightarrow 0.06$). In-engine, overfetching and
+verifying add $0.16$--$0.26$\,ms (Table~\ref{tab:latency}), of which the
+rescore itself is at most $0.12$\,ms.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{fig_xcut3_sift_full.png}
-  \caption{V1: Full-space Recall@10, masked vs.\ verify, at overfetch
-    $m\in\{1,8\}$, SIFT1M with hybrid $L{=}1$.}
+  \includegraphics[width=0.92\linewidth]{fig_xcut3_sift_full.png}
+  \caption{V1 on SIFT1M with $L{=}1$: full-space Recall@10 without
+    verification, with verification at $m{=}1$, and at $m{=}8$
+    (mean$\pm$std, $T{=}5$). The unverified curve is hidden under $m{=}1$,
+    which returns the same set by construction.}
   \label{fig:verify}
 \end{figure}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{fig_xcut3_d768_full.png}
-  \caption{V1 on synthetic $D{=}768$: overfetch cannot rescue recall under
-    low coherence.}
-  \label{fig:verify-d768}
-\end{figure}
-
-\subsection{M3: Blending Is Dominated by a Hard Cutoff}
+\subsection{M3: Blending Never Beats Pure Masking}
 \label{sec:eval-m3}
 
-Finally, we test whether M3's continuous $\alpha$ can outperform M2's discrete
-layer cutoff at matched cost. Figure~\ref{fig:m3} shows that on SIFT at ratio
-0.25, recall is maximized at $\alpha{=}0$ for every cutoff tested
-($\sim$0.84 for $L\geq 1$ on the canonical SIFT panel) and degrades
-monotonically toward the coherence floor as $\alpha\rightarrow 1$. Since
-$\alpha{=}0$ is exactly M2, blending adds API surface and computes both
-distance terms without ever improving on the simpler design. We do not
-recommend shipping M3.
+Finally, we test whether M3's continuous $\alpha$ can improve on M2.
+Figure~\ref{fig:m3} shows that on SIFT1M at ratio $0.25$, subspace recall is
+highest at $\alpha{=}0$ for every cutoff ($0.77$ at $L{=}1$ and $0.78$ at
+$L{=}2$, matching Table~\ref{tab:m2}) and falls monotonically to the $L{=}0$
+(coherence) level of $0.075$ as $\alpha\rightarrow 1$; already at
+$\alpha{=}0.25$ it drops to $0.21$. Since $\alpha{=}0$ is exactly M2,
+blending adds API surface and computes both distances without ever improving
+on the simpler design; we do not recommend shipping M3.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.92\linewidth]{fig_option4_sift.png}
-  \caption{M3 on SIFT: recall vs.\ $\alpha$ for cutoffs $\{0,1,2\}$ (ratio
-    0.25, subspace ground truth; canonical panel).}
+  \caption{M3 on SIFT1M: subspace Recall@10 vs.\ $\alpha$ for cutoffs
+    $\{0,1,2\}$ at ratio $0.25$ (mean$\pm$std, $T{=}5$).}
   \label{fig:m3}
 \end{figure}
 
 \subsection{Summary}
 
-Table~\ref{tab:keep} consolidates the keep/skip verdict along the argument
-chain of Sections~\ref{sec:eval-attr}--\ref{sec:eval-m3}.
+Table~\ref{tab:keep} consolidates the verdict for each mechanism.
 
 \begin{table}[htbp]
   \centering
-  \caption{Keep / demote map for the masked-distance study.}
+  \caption{Verdict per mechanism.}
   \label{tab:keep}
   \footnotesize
   \setlength{\tabcolsep}{3pt}
@@ -591,15 +589,15 @@ chain of Sections~\ref{sec:eval-attr}--\ref{sec:eval-m3}.
     \hline
     \textbf{Mechanism} & \textbf{Verdict} & \textbf{Evidence} \\
     \hline
-    Attribution (in-DB) & Keep & $\sim$1.8$\times$ vs.\ post-query; recall-neutral \\
-    Focus rescoring only & Not accel. & Speedup $<1$ (\S\ref{sec:eval-attr}) \\
-    M1 naive mask & Baseline only & Full-GT collapse on SIFT (\S\ref{sec:eval-m1}) \\
-    M2 hybrid cutoff & \textbf{Keep} & Restores navigability; e2e speedup still $<1$ \\
-    K1 gather kernel & Keep (micro) & 1.1--1.8$\times$ ns/op; does not close e2e gap \\
-    C1 coherence & Keep & Predicts high-$D$ / verify limits \\
+    Attribution (in-DB) & Keep & $+$0.4\,ms in-engine; $\sim$1.8$\times$ vs.\ post-query \\
+    Focus rescoring only & Not accel. & 0.80$\times$ plain speed (\S\ref{sec:eval-attr}) \\
+    M1 all-layer mask & Keep & Full-space recall $=$ coherence; subspace recall 0.38--0.98 (\S\ref{sec:eval-gt}) \\
+    M2 hybrid cutoff & Optional & At most $+$0.04 subspace recall over M1 (\S\ref{sec:eval-m2}) \\
+    K1 gather kernel & Keep (micro) & 1.1--1.8$\times$ vs.\ repack; masked still slower than plain (\S\ref{sec:eval-latency}) \\
+    C1 coherence & Keep & Equals full-space recall of masked search \\
     V1, $m{=}1$ & API only & Recall@$k$ provably unchanged \\
-    V1 + overfetch & Conditional & Helps on coherent data; $\sim$+45\,ms; fails on low coherence \\
-    M3 blend & Skip & Best at $\alpha{=}0$, i.e.\ collapses to M2 \\
+    V1 + overfetch & Keep & Recovers full-space recall where coherence allows; $+$0.2\,ms \\
+    M3 blend & Skip & Best at $\alpha{=}0$, i.e.\ M2 \\
     \hline
   \end{tabular}
 \end{table}
@@ -611,58 +609,76 @@ chain of Sections~\ref{sec:eval-attr}--\ref{sec:eval-m3}.
 \paragraph{Vector databases.} Milvus~\cite{wang2021milvus},
 Pinecone~\cite{pinecone2023}, and Qdrant~\cite{qdrant2024} expose ANN with
 filters and quantization but not native per-coordinate decompositions or
-layer-aware masked metrics.
-Unlike those engines, we add in-database attribution and query-time masked
-HNSW scoring inside an existing production graph index.
+layer-aware masked metrics; Pan et al.~\cite{pan2024survey} survey the design
+space. We add in-database attribution and query-time masked HNSW scoring
+inside an existing production graph index.
 
-\paragraph{ANN libraries.} FAISS~\cite{johnson2019faiss} and
-ScaNN~\cite{guo2020scann} optimize large-scale search; explainability and
-dynamic subspace routing remain post-processing concerns external to the
-index.
-Unlike library-level ANN, we instrument traversal and scoring inside a
-serving engine and evaluate end-to-end latency, not only index throughput.
+\paragraph{ANN search.} FAISS~\cite{johnson2019faiss} and
+ScaNN~\cite{guo2020scann} optimize large-scale search, and Wang et
+al.~\cite{wang2021graphsurvey} compare graph indexes experimentally;
+explainability and dynamic subspace routing remain outside the index.
+ADSampling~\cite{gao2023adsampling} and FINGER~\cite{chen2023finger} speed up
+graph search by approximating distance comparisons; our latency results
+(Section~\ref{sec:eval-latency}) suggest masked search needs comparably cheap
+comparisons to pay off.
+
+\paragraph{Subspace and constrained search.} $k$-NN queries over arbitrary
+query-time subspaces have been studied with dedicated index
+structures~\cite{lian2008subspace,bernecker2010subspace}. Filtered graph
+search faces a related problem: when a predicate changes which points
+qualify, a graph built for the unconstrained query can lose navigability,
+which ACORN~\cite{patel2024acorn} and
+Filtered-DiskANN~\cite{gollapudi2023filtered} address by changing graph
+construction. We instead measure what an unmodified full-space HNSW graph
+delivers under a query-time masked metric.
 
 \paragraph{Explainable AI.} SHAP and LIME~\cite{lundberg2017shap,ribeiro2016lime}
 approximate model behavior via sampling or local surrogates.
 Unlike those surrogate explainers, we exploit additive metric structure for
-deterministic, zero-variance attributions aligned with the engine's own ranking, 
+deterministic, zero-variance attributions aligned with the engine's own ranking,
 closer to in-database OLAP rollups~\cite{gray1998data} than to sampling-based
 XAI.
 
 \paragraph{Dimension reduction and projected indexes.} Static projections or
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
-an existing full-dimensional HNSW index.
-Unlike building a dedicated auxiliary index per focus set, which would sidestep
-the navigability problem of Section~\ref{sec:eval-m1} but only for a registered
-palette of subspaces, we characterize what query-time masking of an unmodified
-full-space graph can and cannot deliver, and leave projected indexes to future
-work (Section~\ref{sec:discussion}).
+an existing full-dimensional HNSW index. A dedicated auxiliary index per focus
+set would avoid both the recall loss for small focus sets
+(Section~\ref{sec:eval-m2}) and the gather cost
+(Section~\ref{sec:eval-latency}), but only for a registered palette of
+subspaces; we leave it to future work (Section~\ref{sec:discussion}).
 
 %=============================================================================
 \section{Discussion and Conclusion}
 \label{sec:discussion}
 
-\paragraph{Shipping verdict.} Keep in-database attribution and M2, keep K1 as
-an implementation detail, ship V1 only with overfetch on coherent data
-(Section~\ref{sec:eval-verify}), and do not ship M3 ($\alpha{=}0$ is M2).
+\paragraph{Shipping verdict.} Keep in-database attribution. Keep masked
+traversal as a semantics feature for subspace search, with V1 overfetch when
+callers need full-space neighbors; the layer cutoff can stay as an optional
+knob, and M3 should go. In this implementation masked traversal is not a
+speed feature.
 
-\paragraph{Why no e2e speedup.} Section~\ref{sec:eval-kernel} isolates the
-bottleneck to I/O and candidate management, not masked arithmetic. Query-time
-masking of an unmodified full-space HNSW therefore cannot yield wall-clock
-wins without a redesigned traversal structure. A dedicated projected index
-per registered focus set (Section~\ref{sec:related}) is the natural next step.
+\paragraph{Latency.} Masking lost to plain search in every configuration
+because a gathered distance costs more than a contiguous one
+(Section~\ref{sec:eval-latency}). Laying registered focus sets out
+contiguously, or a dedicated projected index per registered focus set
+(Section~\ref{sec:related}), are the natural next steps.
 
-\paragraph{Limitations.} No dedicated high-$D$ M1 archive (collapse evidenced
-via M2's low-$L$ cells and C1); no visited-set divergence instrumentation;
-some high-$D$/verify panels predate the $T{=}5$ protocol and are treated as
-qualitative coherence support rather than primary latency claims.
+\paragraph{Limitations.} SIFT1M is our only corpus on which plain HNSW
+search is accurate; on the i.i.d.\ synthetic corpus plain search reaches only
+$0.19$ Recall@10, and real encoder embeddings remain to be tested. We did not
+sweep \texttt{ef} for masked queries, and each masked-traversal result comes
+from a single index per corpus.
 
-XQdrant shows exact feature attribution can live in a Rust vector engine with
-a clear latency win, while masked-distance HNSW is a navigability tool rather
-than a latency win: M2 restores recall where M1 collapses, but
-subspace/full-space coherence caps what an unmodified full-space graph can
-recover. The public experiment index (Section~\ref{sec:artifacts}) maps each
-positive and negative claim to a reproducible run.
+XQdrant shows exact feature attribution can live in a Rust vector engine at a
+small in-engine cost and a clear end-to-end win over client-side extraction.
+For masked-distance HNSW, the main lesson is methodological: recall must be
+measured against the right ground truth. Against full-space ground truth,
+masked traversal of a full-space graph scores the subspace/full-space
+coherence, a property of the data rather than of the index; against subspace
+ground truth, it navigates well for large focus sets and degrades for small
+ones. It never beats plain search, because each masked distance costs more
+than a full contiguous one. The public experiment index
+(Section~\ref{sec:artifacts}) maps each claim to a reproducible run.
 
 %=============================================================================
 %% EDBT: required section name "Artifacts"; does NOT count toward the 6-page limit.
@@ -673,18 +689,15 @@ Source code (XQdrant fork of Qdrant) and the experiment harness are public:
 \begin{itemize}
   \setlength{\itemsep}{0.15em}
   \setlength{\parsep}{0pt}
-  \item Engine fork:
-    \url{https://github.com/Moetez-Fradi/XQdrant}
-  \item Experiment index, scripts, and canonical CSVs:
+  \item Engine fork at the evaluated commit:
+    \url{https://github.com/Moetez-Fradi/XQdrant/tree/ed5ca79}
+  \item Experiment index and scripts\pending{, plus canonical CSVs}:
     \url{https://github.com/Moetez-Fradi/XAI/tree/main/DB_systems}
 \end{itemize}
-The harness repository is a submission stub at review time and will be
-populated with the full runners on acceptance (or earlier via CMT
-supplemental upload if requested). Planned contents: the unified
-orchestration script, per-mechanism runners, plotting entry points for
-M1--M3, K1, C1, and V1, and build/run notes for the reported XQdrant
-binary plus the vanilla Qdrant baseline. Neither repository uses access
-monitoring. A CMT zip upload is optional when these links are provided.
+The harness contains the unified orchestration script, per-mechanism runners,
+plotting entry points for M1--M3, K1, C1, and V1, and build/run notes for the
+XQdrant binary and the vanilla Qdrant baseline. Neither repository uses access
+monitoring.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{main}

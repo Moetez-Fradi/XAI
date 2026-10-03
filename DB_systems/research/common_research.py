@@ -285,7 +285,7 @@ class ResearchClient:
         path = f"/collections/{self.collection}/points/query"
         start = time.perf_counter_ns()
         try:
-            payload = self._backend._request(base, "POST", path, body)
+            payload = self._backend._request(base, "POST", path, body, close=HTTP_CLOSE)
         except Exception as exc:  # noqa: BLE001 - want to classify below
             elapsed = time.perf_counter_ns() - start
             detail = str(exc)
@@ -293,6 +293,13 @@ class ResearchClient:
             return QueryOutcome(None, elapsed, status=status, detail=detail[:300])
         elapsed = time.perf_counter_ns() - start
         return QueryOutcome(self._backend._parse_points(payload), elapsed)
+
+
+# Opt-in (RESEARCH_HTTP_CLOSE=1): fresh connection per research query. Keep-alive
+# requests can hit a ~40 ms TCP delayed-ACK stall (see bench_backends._request) that
+# swamps server compute; on some hosts (e.g. Windows client -> WSL2 server) every
+# request stalls. Recall is unaffected either way.
+HTTP_CLOSE = os.environ.get("RESEARCH_HTTP_CLOSE") == "1"
 
 
 def _looks_unsupported(detail: str) -> bool:
