@@ -42,7 +42,7 @@ python run_xcut3_verify.py --mode http \
 |--------|----------------------------------------|
 | High-D | `2026-07-14_09-34-50__xcut3_highD_fullGT_overfetch_hybrid_v1` |
 | SIFT | `2026-07-14_09-46-22__xcut3_sift_fullGT_overfetch_hybrid_v1` |
-| SIFT, T=5, same index as M1/M2/M3 (paper Fig. 6) | `2026-10-02_17-56-19__xcut3_verify_pass__verify_recall_recovery` |
+| SIFT, T=5, same index as M1/M2/M3 (paper Fig. 5) | `2026-10-02_17-56-19__xcut3_verify_pass__verify_recall_recovery` |
 
 Ignore earlier `xcut3_verify_pass` folders that used subspace-GT-only or simulated mode.
 

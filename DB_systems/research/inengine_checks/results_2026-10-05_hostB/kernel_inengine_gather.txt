@@ -1,0 +1,7 @@
+== host B: Ryzen 5 220, WSL2; XQdrant ed5ca79 perf build (opt-level 3, no LTO); XQDRANT_MASKED_KERNEL=gather; 2026-10-05T23:31:53+01:00
+[K1 in-engine] kernel=gather SIFT1M Q=500 ef=128 best of 3, interleaved
+  plain full search   p50=1.028 ms
+  M1 ratio=0.25       p50=1.218 ms  x0.84 vs plain
+  M1 ratio=0.75       p50=1.524 ms  x0.67 vs plain
+  M1 ratio=1.0        p50=1.589 ms  x0.65 vs plain  identical sets 100.0%
+  -> results_2026-10-05_hostB\kernel_inengine.csv

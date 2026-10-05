@@ -435,6 +435,8 @@ repacked into a scratch buffer).
   → `target/masked_kernel_bench/kernel_bench.csv`. Doc: `xqdrant_docs/X1.md`.
 - **Measured:** gather ~1.1–1.8× faster in microbench
   (`2026-07-11_16-02-59__xcut1_…`); live Option 2 + gather still no e2e speedup &gt; 1.
+  **Superseded (2026-10-05):** that bench used a scalar repack baseline; with the engine's SIMD
+  path gather is no faster than repack. See `xqdrant_docs/X1.md`.
 
 **Suggested commit message:**
 

@@ -1,0 +1,25 @@
+== host B: Ryzen 5 220, WSL2; XQdrant ed5ca79 perf build (opt-level 3, no LTO); XQDRANT_MASKED_KERNEL=repack; 2026-10-05T23:19:27+01:00
+[A] SIFT1M server-side time, kernel=repack, Q=500, ef=128, best of 3, interleaved
+  plain full search                        p50=  1.324 ms  mean=  1.308 ms
+  r=0.25 rescore-only focus (unmasked)     p50=  1.656 ms  mean=  1.629 ms  x0.80 vs plain
+  r=0.25 masked L=0 (no layer masked)      p50=  1.292 ms  mean=  1.293 ms  x1.03 vs plain
+  r=0.25 masked L=1 (M2)                   p50=  1.579 ms  mean=  1.565 ms  x0.84 vs plain
+  r=0.25 masked L=3 (M2)                   p50=  1.549 ms  mean=  1.556 ms  x0.85 vs plain
+  r=0.25 masked all layers (M1)            p50=  1.566 ms  mean=  1.569 ms  x0.85 vs plain
+  r=0.25 L=1 verify, m=1                   p50=  1.563 ms  mean=  1.571 ms  x0.85 vs plain
+  r=0.25 L=1 limit=80, no verify           p50=  1.789 ms  mean=  1.785 ms  x0.74 vs plain
+  r=0.25 L=1 verify, m=8 (limit=80)        p50=  1.807 ms  mean=  1.818 ms  x0.73 vs plain
+  r=0.75 rescore-only focus (unmasked)     p50=  1.635 ms  mean=  1.629 ms  x0.81 vs plain
+  r=0.75 masked L=0 (no layer masked)      p50=  1.301 ms  mean=  1.294 ms  x1.02 vs plain
+  r=0.75 masked L=1 (M2)                   p50=  1.970 ms  mean=  1.981 ms  x0.67 vs plain
+  r=0.75 masked L=3 (M2)                   p50=  1.989 ms  mean=  2.006 ms  x0.67 vs plain
+  r=0.75 masked all layers (M1)            p50=  1.988 ms  mean=  2.002 ms  x0.67 vs plain
+  r=0.75 L=1 verify, m=1                   p50=  1.942 ms  mean=  1.985 ms  x0.68 vs plain
+  r=0.75 L=1 limit=80, no verify           p50=  2.160 ms  mean=  2.199 ms  x0.61 vs plain
+  r=0.75 L=1 verify, m=8 (limit=80)        p50=  2.249 ms  mean=  2.238 ms  x0.59 vs plain
+  [http://127.0.0.1:6333] indexed: status=green, points=10000, indexed_vectors=0
+[B] attribution server-side time, bench_synth_d768_n10000, Q=500, ef=128, interleaved
+  plain search                             p50=  2.119 ms  mean=  2.148 ms
+  with_dims_explained top=1                p50=  2.418 ms  mean=  2.447 ms  x0.88 vs plain
+  with_dims_explained top=10               p50=  2.405 ms  mean=  2.438 ms  x0.88 vs plain
+  with_dims_explained top=50               p50=  2.435 ms  mean=  2.468 ms  x0.87 vs plain

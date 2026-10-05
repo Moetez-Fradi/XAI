@@ -71,7 +71,7 @@ no way to restrict HNSW traversal itself to a dynamic focus subspace. We present
 
 \emph{Attribution}: \texttt{with\_dims\_explained} computes exact top-$m$
 per-dimension score decomposition in-database, avoiding client-side vector
-egress. It leaves the ranked result unchanged, adds about 0.4\,ms of in-engine
+egress. It leaves the ranked result unchanged, adds about 0.3\,ms of in-engine
 time independent of $m$, and runs $\sim$1.8$\times$ faster end to end than
 post-query extraction at encoder-scale widths ($D\in\{768,1536\}$).
 
@@ -84,10 +84,11 @@ failure. Against subspace ground truth, it finds the focus-metric neighbors
 with Recall@10 of at least $0.91$ when the focus set covers half the dimensions
 or more, but $0.77$ at a quarter and about $0.4$ at a tenth; keeping
 full-distance routing on the upper layers (\texttt{mask\_from\_layer}) changes
-this by at most $0.04$. In-engine, masked search runs at $0.70$--$0.89\times$
-the speed of plain search: with every dimension in focus it returns identical
-results yet takes $1.6\times$ as long, so the per-distance cost of
-non-contiguous scoring, not traversal, rules out a latency win. Overfetch plus
+this by at most $0.04$. In-engine, masked search runs at $0.67$--$0.85\times$
+the speed of plain search. With every dimension in focus it returns identical
+results yet takes $1.6\times$ as long, and a masked distance over a quarter of
+the dimensions costs twice a full contiguous one, so per-distance cost, not
+traversal, rules out a latency win. Overfetch plus
 full-distance verification recovers full-space recall where coherence allows
 ($0.48\rightarrow 0.91$ at $D_{\mathrm{sub}}/D=0.75$) for under 0.3\,ms, and an
 $\alpha$-weighted full/masked blend never improves on pure masking. We release
@@ -126,13 +127,19 @@ High-dimensional dense embeddings underpin retrieval-augmented generation
 Production engines traverse HNSW graphs~\cite{malkov2018hnsw}, collapsing every
 comparison into a single scalar. This creates two gaps that motivate this paper.
 
-\textbf{Explainability.} Practitioners cannot see which coordinates drove a hit
-without fetching full vectors and recomputing per-dimension terms client-side,
-an expensive, egress-bound pattern.
+\textbf{Explaining scores.} Practitioners cannot see which coordinates drove a
+hit without fetching full vectors and recomputing per-dimension terms
+client-side, an expensive, egress-bound pattern. Per-coordinate terms matter
+most when coordinates carry meaning, as in concatenated multi-field or
+multimodal vectors~\cite{wang2024must}, where they sum to each field's share
+of the score.
 
 \textbf{Subspace routing.} Many workloads care about a dynamic focus set
-$\mathcal{F}$ of coordinates (concept probes, ablations, modality masks), yet
-stock HNSW always evaluates full $D$-dimensional distances during graph descent.
+$\mathcal{F}$ of coordinates: one field or modality of a concatenated
+vector, a Matryoshka prefix that is itself a lower-dimensional
+embedding~\cite{kusupati2022matryoshka}, or the dimensions under study in an
+ablation. Yet stock HNSW always evaluates full $D$-dimensional distances
+during graph descent.
 Rescoring on $\mathcal{F}$ after full-vector preselection improves semantic
 specificity but, as we show, cannot reduce traversal cost.
 
@@ -141,7 +148,7 @@ attribution, \texttt{with\_dims\_explained} attaches exact top-$m$ coordinate
 terms to search results in-database. For subspace routing,
 \texttt{nearest.focus} with \texttt{masked=true} evaluates reduced distances
 \emph{during} HNSW traversal, not just after it, with a hybrid layer cutoff,
-gather-based SIMD kernels, an optional verify/overfetch pass, and a
+a choice of masked-distance kernels, an optional verify/overfetch pass, and a
 full/masked score blend. Evaluating masked traversal requires care about which
 neighbors count as correct. Recall against full-space ground truth measures
 whether two metrics agree; recall against subspace ground truth measures
@@ -156,13 +163,15 @@ whether traversal navigates. Keeping the two apart changes the conclusions
   \setlength{\topsep}{0.15em}
   \setlength{\partopsep}{0pt}
   \item \textbf{In-database attribution.} Exact score decomposition with
-    order-statistic top-$m$ selection; about 0.4\,ms in-engine and
+    order-statistic top-$m$ selection; about 0.3\,ms in-engine and
     $\sim$1.8$\times$ faster than post-query extraction, with the ranked
     result unchanged.
   \item \textbf{Masked-distance HNSW traversal, evaluated under two ground
     truths.} On SIFT1M it navigates well for large focus sets and degrades
     for small ones, a layer cutoff barely changes this, and it never beats
-    plain search; we trace the latency gap to per-distance cost.
+    plain search; we trace the latency gap to per-distance cost, which a
+    microbenchmark puts at twice a full distance for a quarter of the
+    dimensions.
   \item \textbf{Coherence as the reference for full-space recall.}
     Subspace/full-space $k$-NN overlap matches the full-space recall of
     masked search and predicts when a verify pass can recover full-space
@@ -252,7 +261,7 @@ three. Table~\ref{tab:namemap} fixes the naming used for the rest of the paper.
   \caption{Naming used throughout Sections~\ref{sec:masked}--\ref{sec:eval}.}
   \label{tab:namemap}
   \small
-  \begin{tabular}{|l|p{5.4cm}|}
+  \begin{tabular}{@{}lp{6.4cm}@{}}
     \hline
     \textbf{Name} & \textbf{What it is} \\
     \hline
@@ -315,11 +324,11 @@ recovers recall at a fixed cutoff more cheaply than raising $L$.
 \subsection{K1: Kernel Choice: Repack vs.\ Gather}
 
 Masked scoring can copy focus dims into a contiguous scratch buffer before
-calling the existing SIMD kernels (\emph{repack}), or gather them directly
-in-register (AVX2 gather for Dot/Cosine/Euclidean on x86; scalar fallback
-elsewhere). We add the gather path, selectable via environment variable
-\breakablecode{XQDRANT\_MASKED\_KERNEL}, and treat kernel choice as
-orthogonal to M1--M3: any of the three can use either kernel.
+calling the existing SIMD kernels (\emph{repack}, the default), or gather
+them directly in-register (AVX2 gather for Dot/Cosine/Euclidean on x86;
+scalar fallback elsewhere). We add the gather path, selectable via
+environment variable \breakablecode{XQDRANT\_MASKED\_KERNEL}, and treat kernel
+choice as orthogonal to M1--M3: any of the three can use either kernel.
 
 \subsection{V1: Verify and Overfetch}
 
@@ -341,16 +350,19 @@ each mechanism.
 
 \subsection{Setup}
 
-\paragraph{Hosts and protocol.} Host~A (\pending{CPU model, cores, RAM},
-Linux) runs the attribution suite against vanilla Qdrant (1.18.3-dev, commit
-\texttt{b4e9326}) and the kernel microbenchmarks. Host~B (AMD Ryzen~5~220,
-6~cores/12~threads, 15\,GB RAM) runs every masked-traversal experiment and all
-in-engine timings, with XQdrant at commit \texttt{ed5ca79} (opt-level~3, no
-LTO) in WSL2 Ubuntu~24.04; its plain-search baseline is XQdrant without focus
-parameters, which takes the unmodified Qdrant path. Collections use HNSW with
+\paragraph{Hosts and protocol.} Host~A (Apple MacBook Air, M2, 8~cores,
+16\,GB RAM, macOS) runs only the client-observed attribution suite
+(Figure~\ref{fig:attribution-depth} and the client-observed rescoring speeds
+in Section~\ref{sec:eval-attr}) against vanilla Qdrant (1.18.3-dev, commit \texttt{b4e9326}); no latency is compared
+across hosts. Host~B (AMD Ryzen~5~220, 6~cores/12~threads, 15\,GB
+RAM, AVX2) runs every masked-traversal experiment, all in-engine timings, and
+the kernel microbenchmarks, with XQdrant at commit \texttt{ed5ca79}
+(opt-level~3, no LTO) in WSL2 Ubuntu~24.04; its plain-search baseline is
+XQdrant without focus parameters, which takes the unmodified Qdrant path. Collections use HNSW with
 $M{=}16$ and \texttt{ef\_construct}${=}200$, no quantization, and, unless
-swept, \texttt{ef}${=}128$; the masked kernel is gather unless the kernel is
-the subject. All masked-traversal comparisons on a corpus share one index, so
+swept, \texttt{ef}${=}128$; the masked kernel is repack, the engine default,
+unless the kernel is the subject (it changes how a score is computed, not what
+is computed, so recall does not depend on it). All masked-traversal comparisons on a corpus share one index, so
 differences between mechanisms are not confounded by index construction.
 Unless a caption says otherwise, each configuration is the mean of $T{=}5$
 trials with distinct seeds that redraw the focus set and, where applicable,
@@ -378,22 +390,23 @@ $\ell_2$-normalized, scored by Dot product.
 Attribution annotates an already-ranked result, so it cannot change recall:
 at $D{=}768$, Recall@10 is identical for vanilla Qdrant and for XQdrant with
 $m{=}10$ attributions at every \texttt{ef} we tested. In-engine (host~B), it
-adds $0.36$--$0.40$\,ms to a $2.45$\,ms plain search, about 15\%, and the
-cost barely depends on $m$ ($2.81$, $2.81$, and $2.85$\,ms for $m=1$, $10$,
+adds $0.29$--$0.32$\,ms to a $2.12$\,ms plain search, about 14\%, and the
+cost barely depends on $m$ ($2.42$, $2.41$, and $2.44$\,ms for $m=1$, $10$,
 $50$). The relevant comparison is post-query extraction, the only
 alternative available to a client: Figure~\ref{fig:attribution-depth} shows
 in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
 ($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits at
-$6.87$--$7.03$\,ms ($\approx 1.78\times$). These client-observed timings are
+$6.87$--$7.03$\,ms ($\approx 1.77\times$). These client-observed timings are
 free of the delayed-ACK stall noted above: the harness sends both
 multi-packet requests, the attribution query and the vector fetch, on fresh
 connections, and every p50 is far below $40$\,ms. The gap is what
 extraction adds: a second round trip, vector egress, and client-side
-computation. Figure~\ref{fig:subspace-rescore}
-shows that \texttt{nearest.focus} \emph{rescoring}, which reuses full-vector
-preselection, yields speedup $<1$ ($0.80$--$0.84$; $0.80$ in-engine on
-SIFT1M): it reduces the dimensionality of the arithmetic but not the
-traversal it depends on. This motivates masking the traversal itself.
+computation. \texttt{nearest.focus} \emph{rescoring}, which reuses
+full-vector preselection, is slower than plain search: $0.80$--$0.84\times$
+its speed client-observed at $D{=}768$ over ratios $0.1$--$0.75$ (host~A),
+and $0.80$--$0.81\times$ in-engine on SIFT1M (Table~\ref{tab:latency}). It
+reduces the dimensionality of the arithmetic but not the traversal it
+depends on. This motivates masking the traversal itself.
 
 \begin{figure}[htbp]
   \centering
@@ -401,15 +414,6 @@ traversal it depends on. This motivates masking the traversal itself.
   \caption{Attribution depth: in-DB vs.\ post-query extraction ($D{=}768$,
     host~A, client-observed). Mean$\pm$std over $T{=}5$ trials.}
   \label{fig:attribution-depth}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.92\linewidth]{plot4_subspace_speedup_d768.png}
-  \caption{Focus \emph{rescoring} speedup $T_{\mathrm{full}}/T_{\mathrm{sub}}$
-    ($D{=}768$, host~A): values $<1$ show rescoring alone does not
-    accelerate search (mean$\pm$std, $T{=}5$).}
-  \label{fig:subspace-rescore}
 \end{figure}
 
 \subsection{M1 and C1: Two Questions, Two Ground Truths}
@@ -482,49 +486,59 @@ ratio $0.1$ to $0.30$ at $0.75$).
 \label{sec:eval-latency}
 
 No masked configuration beats plain search (Table~\ref{tab:latency}).
-In-engine, masked search runs at $0.85$--$0.89\times$ the speed of plain
-search at ratio $0.25$ and at $0.70$--$0.75\times$ at ratio $0.75$, so it gets
-slower as the focus set grows. A masked request with $L{=}0$ runs at full
-speed, so the request path itself adds nothing. With every dimension in focus
-(ratio $1.0$), masked search returns the same result set as plain search for
-all 500 queries, so it traverses the same nodes, yet it takes $1.94$\,ms
-instead of $1.23$\,ms (M1; $1.84$\,ms at $L{=}1$). The gap is therefore
-per-distance cost: gathering coordinates from non-contiguous positions is
-slower than one contiguous SIMD pass over the full vector, and shrinking the
-focus set to a quarter of the dimensions does not make up the difference.
-Choosing gather over repack helps in isolation, by $1.24\times$, $1.14\times$,
-$1.42\times$, and $1.77\times$ at $D_{\mathrm{sub}}\in\{32,128,384,768\}$
-(Figure~\ref{fig:kernel}), but cannot close this gap. For masking to pay off,
-a masked distance must cost less than a full contiguous one, for example by
-laying registered focus dimensions out contiguously or by approximating
-distance comparisons~\cite{gao2023adsampling,chen2023finger,gao2024rabitq}.
+In-engine, masked search runs at $0.84$--$0.85\times$ the speed of plain
+search at ratio $0.25$ and at $0.67\times$ at ratio $0.75$, so it gets slower
+as the focus set grows. A masked request with $L{=}0$ runs at full speed, so
+the request path itself adds nothing. With every dimension in focus (ratio
+$1.0$), masked search returns the same result set as plain search for all
+500 queries, so it traverses the same nodes, yet it runs at $0.62\times$ the
+speed of plain search ($1.67$ vs.\ $1.04$\,ms for M1 in a separate
+interleaved run; $0.64\times$ at $L{=}1$). The gap is therefore per-distance
+cost, which Figure~\ref{fig:kernel} measures in isolation: one contiguous
+128-d Euclidean distance takes $18$\,ns, while a masked distance takes
+$36$\,ns over only 32 coordinates and $82$--$94$\,ns over all 128, whichever
+kernel computes it. Masking a quarter of the dimensions thus still doubles
+the cost of every distance. Gather does not help: in isolation it ties
+repack at 32 coordinates and is $15$--$20\%$ slower at 96--128, and
+in-engine the two kernels are within $3\%$ of each other (M1 at $0.84\times$
+vs.\ $0.82\times$ of plain speed at ratio $0.25$, $0.67\times$ vs.\
+$0.65\times$ at $0.75$). For masking to pay off, a masked distance must cost
+less than a full contiguous one. Laying registered focus dimensions out
+contiguously, as a Matryoshka prefix or a per-field block already is, gets
+there ($14$ vs.\ $18$\,ns at a quarter of the dimensions), though at SIFT
+width the saving is small; cheaper approximate distance
+comparisons~\cite{gao2023adsampling,chen2023finger,gao2024rabitq} are the
+other route.
 
 \begin{table}[htbp]
   \centering
-  \caption{In-engine latency on SIFT1M (host~B): server-side p50 in ms over
-    500 queries (best of 3 per query) and speed relative to plain search.}
+  \caption{In-engine latency on SIFT1M (host~B, repack kernel): server-side
+    p50 in ms over 500 queries (best of 3 per query, all rows interleaved per
+    query) and speed relative to plain search.}
   \label{tab:latency}
   \small
   \begin{tabular}{@{}lcc@{}}
     \hline
     \textbf{Query} & \textbf{ratio 0.25} & \textbf{ratio 0.75} \\
     \hline
-    Plain full search & 1.25 (1.00$\times$) & 1.25 (1.00$\times$) \\
-    Focus rescoring (unmasked) & 1.56 (0.80$\times$) & 1.53 (0.81$\times$) \\
-    Masked, $L{=}0$ & 1.25 (1.00$\times$) & 1.23 (1.02$\times$) \\
-    M2, $L{=}1$ & 1.46 (0.85$\times$) & 1.79 (0.70$\times$) \\
-    M2, $L{=}3$ & 1.41 (0.89$\times$) & 1.67 (0.75$\times$) \\
-    M1 & 1.44 (0.87$\times$) & 1.69 (0.74$\times$) \\
-    V1, $L{=}1$, $m{=}8$ & 1.73 (0.72$\times$) & 1.95 (0.64$\times$) \\
+    Plain full search & 1.32 (1.00$\times$) & 1.32 (1.00$\times$) \\
+    Focus rescoring (unmasked) & 1.66 (0.80$\times$) & 1.64 (0.81$\times$) \\
+    Masked, $L{=}0$ & 1.29 (1.03$\times$) & 1.30 (1.02$\times$) \\
+    M2, $L{=}1$ & 1.58 (0.84$\times$) & 1.97 (0.67$\times$) \\
+    M2, $L{=}3$ & 1.55 (0.85$\times$) & 1.99 (0.67$\times$) \\
+    M1 & 1.57 (0.85$\times$) & 1.99 (0.67$\times$) \\
+    V1, $L{=}1$, $m{=}8$ & 1.81 (0.73$\times$) & 2.25 (0.59$\times$) \\
     \hline
   \end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.92\linewidth]{fig_xcut1_kernels.png}
-  \caption{K1: Masked Dot-product kernel cost, repack vs.\ gather (ns/op,
-    host~A).}
+  \includegraphics[width=0.92\linewidth]{fig_k1_kernel_cost.png}
+  \caption{K1: cost of one distance at SIFT width (Euclidean, $D{=}128$,
+    host~B) for $D_{\mathrm{sub}}$ focus coordinates, by kernel. The dashed
+    line is one full contiguous 128-d distance, as plain search computes it.
+    Mean$\pm$std over $T{=}5$ trials.}
   \label{fig:kernel}
 \end{figure}
 
@@ -541,8 +555,8 @@ with every layer masked the results are similar ($0.64$ and $0.93$). The
 candidate pool is now the top-$80$ under the focus metric, and verification
 recovers whatever part of the full-space top-$10$ it contains; at ratio $0.1$
 that part is small ($0.01\rightarrow 0.06$). In-engine, overfetching and
-verifying add $0.16$--$0.26$\,ms (Table~\ref{tab:latency}), of which the
-rescore itself is at most $0.12$\,ms.
+verifying add $0.23$--$0.28$\,ms (Table~\ref{tab:latency}), of which the
+rescore itself is at most $0.09$\,ms.
 
 \begin{figure}[htbp]
   \centering
@@ -590,14 +604,14 @@ Table~\ref{tab:keep} consolidates the verdict for each mechanism.
     \hline
     \textbf{Mechanism} & \textbf{Verdict} & \textbf{Evidence} \\
     \hline
-    Attribution (in-DB) & Keep & $+$0.4\,ms in-engine; $\sim$1.8$\times$ vs.\ post-query \\
+    Attribution (in-DB) & Keep & $+$0.3\,ms in-engine; $\sim$1.8$\times$ vs.\ post-query \\
     Focus rescoring only & Not accel. & 0.80$\times$ plain speed (\S\ref{sec:eval-attr}) \\
     M1 all-layer mask & Keep & Full-space recall $=$ coherence; subspace recall 0.38--0.98 (\S\ref{sec:eval-gt}) \\
     M2 hybrid cutoff & Optional & At most $+$0.04 subspace recall over M1 (\S\ref{sec:eval-m2}) \\
-    K1 gather kernel & Keep (micro) & 1.1--1.8$\times$ vs.\ repack; masked still slower than plain (\S\ref{sec:eval-latency}) \\
+    K1 gather kernel & Skip & No faster than repack in isolation; within 3\% in-engine (\S\ref{sec:eval-latency}) \\
     C1 coherence & Keep & Equals full-space recall of masked search \\
     V1, $m{=}1$ & API only & Recall@$k$ provably unchanged \\
-    V1 + overfetch & Keep & Recovers full-space recall where coherence allows; $+$0.2\,ms \\
+    V1 + overfetch & Keep & Recovers full-space recall where coherence allows; $+$0.3\,ms \\
     M3 blend & Skip & Best at $\alpha{=}0$, i.e.\ M2 \\
     \hline
   \end{tabular}
@@ -653,7 +667,7 @@ estimate attributions by sampling or local surrogates instead.
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
 an existing full-dimensional HNSW index. A dedicated auxiliary index per focus
 set would avoid both the recall loss for small focus sets
-(Section~\ref{sec:eval-m2}) and the gather cost
+(Section~\ref{sec:eval-m2}) and the per-distance cost
 (Section~\ref{sec:eval-latency}), but only for a registered palette of
 subspaces; we leave it to future work (Section~\ref{sec:discussion}).
 
@@ -668,7 +682,8 @@ knob, and M3 should go. In this implementation masked traversal is not a
 speed feature.
 
 \paragraph{Latency.} Masking lost to plain search in every configuration
-because a gathered distance costs more than a contiguous one
+because a masked distance costs more than a full contiguous one, whichever
+kernel computes it
 (Section~\ref{sec:eval-latency}). Laying registered focus sets out
 contiguously, or a dedicated projected index per registered focus set
 (Section~\ref{sec:related}), are the natural next steps.
@@ -676,8 +691,8 @@ contiguously, or a dedicated projected index per registered focus set
 \paragraph{Limitations.} SIFT1M is our only corpus on which plain HNSW
 search is accurate; on the i.i.d.\ synthetic corpus plain search reaches only
 $0.19$ Recall@10, and real encoder embeddings remain to be tested. We did not
-sweep \texttt{ef} for masked queries, and each masked-traversal result comes
-from a single index per corpus.
+sweep \texttt{ef} for masked queries, each masked-traversal result comes
+from a single index per corpus, and kernel costs are from one x86 CPU.
 
 XQdrant shows exact feature attribution can live in a Rust vector engine at a
 small in-engine cost and a clear end-to-end win over client-side extraction.
@@ -700,7 +715,9 @@ Source code (XQdrant fork of Qdrant) and the experiment harness are public:
   \setlength{\itemsep}{0.15em}
   \setlength{\parsep}{0pt}
   \item Engine fork at the evaluated commit:
-    \url{https://github.com/Moetez-Fradi/XQdrant/tree/ed5ca79}
+    \url{https://github.com/Moetez-Fradi/XQdrant/tree/ed5ca79}; the kernel
+    microbenchmark of Figure~\ref{fig:kernel} is commit \texttt{6cb79ea},
+    which adds only the benchmark
   \item Experiment index and scripts:
     \url{https://github.com/Moetez-Fradi/XAI/tree/EDBT27/DB_systems}
 \end{itemize}

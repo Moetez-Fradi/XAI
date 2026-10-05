@@ -16,7 +16,7 @@ Parent entry point: [`../README.md`](../README.md).
 | 0 | Attribution / focus rescore | §5.2 | [`step0_baseline_done/`](./step0_baseline_done/) | root `bench_suite.py` Tests A–D | Keep attribution; rescore not accel. |
 | 1 | **M1** + **C1** | §5.3 | [`option1_naive_masked/`](./option1_naive_masked/) (also [`xcut2_subspace_coherence/`](./xcut2_subspace_coherence/)) | `run_option1_recall_collapse.py` | Keep (full-space recall = coherence) |
 | 2 | **M2** | §5.4 | [`option2_hybrid_layer_cutoff/`](./option2_hybrid_layer_cutoff/) | `run_option2_layer_sweep.py` | Optional (≤ +0.04 over M1) |
-| 3 | **K1** + in-engine latency | §5.5 | [`xcut1_gather_vs_repack/`](./xcut1_gather_vs_repack/), [`inengine_checks/`](./inengine_checks/) | Criterion bench, `run_server_time.py`, `run_ratio1_kernel_cost.py` | Keep (micro) |
+| 3 | **K1** + in-engine latency | §5.5 | [`xcut1_gather_vs_repack/`](./xcut1_gather_vs_repack/), [`inengine_checks/`](./inengine_checks/) | `masked_kernel_bench` (engine fork `6cb79ea`), `run_server_time.py`, `run_ratio1_kernel_cost.py`, `run_kernel_inengine.py` | Skip gather |
 | 4 | **V1** | §5.6 | [`xcut3_verify_pass/`](./xcut3_verify_pass/) | `run_xcut3_verify.py` | Keep with overfetch |
 | 5 | **M3** | §5.7 | [`option4_weighted_blend/`](./option4_weighted_blend/) | `run_option4_alpha_sweep.py` | **Skip** |
 

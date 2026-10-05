@@ -288,6 +288,8 @@ def plot_subspace_speedup(dimension: int, output_stem: str = "plot4_subspace_res
     rows = _read_subspace_rescore_csv(dimension)
     if not rows:
         return None
+    # Plot in ratio order; CSV row order is not guaranteed to be sorted.
+    rows = sorted(rows, key=lambda r: float(r["subspace_ratio"]))
 
     _apply_pub_style()
     fig, ax = plt.subplots(figsize=(7, 5))

@@ -224,6 +224,47 @@ def focus_body(
     }
 
 
+def server_time_interleaved(
+    url: str,
+    configs: Sequence[tuple[str, Sequence[dict[str, Any]]]],
+    reps: int = 3,
+) -> dict[str, dict[str, Any]]:
+    """Server-side (in-engine) time per configuration, interleaved across configurations.
+
+    ``configs`` is a list of ``(name, bodies)`` with one body per query, all of equal length.
+    For query ``i`` every configuration is timed (best of ``reps``, Qdrant's ``time`` field)
+    in an order rotated by ``i``, so slow drift (thermal, frequency, background load) hits
+    all configurations alike instead of whichever block ran last. Fresh connection per
+    request, so TCP delayed-ACK stalls cannot occur.
+
+    Returns ``{name: {"p50": ms, "mean": ms, "ids": [set of point ids per query]}}``.
+    """
+    import requests
+
+    headers = {"Connection": "close"}
+    n = len(configs[0][1])
+    times: dict[str, list[float]] = {name: [] for name, _ in configs}
+    ids: dict[str, list[set]] = {name: [] for name, _ in configs}
+    for i in range(n):
+        for j in range(len(configs)):
+            name, bodies = configs[(i + j) % len(configs)]
+            best, points = None, None
+            for _ in range(reps):
+                r = requests.post(url, json=bodies[i], headers=headers, timeout=60)
+                r.raise_for_status()
+                payload = r.json()
+                t = payload["time"] * 1e3
+                if best is None or t < best:
+                    best, points = t, payload["result"]["points"]
+            times[name].append(best)
+            ids[name].append({p["id"] for p in points})
+    return {
+        name: {"p50": float(np.median(times[name])), "mean": float(np.mean(times[name])),
+               "ids": ids[name]}
+        for name, _ in configs
+    }
+
+
 # ---------------------------------------------------------------------------
 # HTTP client for arbitrary bodies (reuses HttpBackend for provisioning)
 # ---------------------------------------------------------------------------

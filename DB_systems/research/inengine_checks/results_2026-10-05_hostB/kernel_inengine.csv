@@ -1,0 +1,9 @@
+kernel,query,ratio,p50_ms,speed_vs_plain,identical_sets
+repack,plain,,1.0506,1.00,
+repack,M1,0.25,1.2852,0.82,
+repack,M1,0.75,1.6116,0.65,
+repack,M1,1.0,1.6791,0.63,1.0000
+gather,plain,,1.0277,1.00,
+gather,M1,0.25,1.2178,0.84,
+gather,M1,0.75,1.5237,0.67,
+gather,M1,1.0,1.5893,0.65,1.0000

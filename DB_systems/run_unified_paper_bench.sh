@@ -89,7 +89,7 @@ start_server() {
     QDRANT__SERVICE__HTTP_PORT="${http_port}" \
     QDRANT__SERVICE__GRPC_PORT="${grpc_port}" \
     QDRANT__STORAGE__STORAGE_PATH="${storage}/storage" \
-    XQDRANT_MASKED_KERNEL="${XQDRANT_MASKED_KERNEL:-gather}" \
+    XQDRANT_MASKED_KERNEL="${XQDRANT_MASKED_KERNEL:-repack}" \
       "${bin}" >"${log_file}" 2>&1
   ) &
   echo $! >"${storage}/server.pid"
@@ -121,7 +121,7 @@ main() {
   export BENCH_TRIALS BENCH_QUERIES BENCH_DIMENSIONS QDRANT_URL XQDRANT_URL
   export BENCH_MODE=http
   export PYTHONUNBUFFERED=1
-  export XQDRANT_MASKED_KERNEL="${XQDRANT_MASKED_KERNEL:-gather}"
+  export XQDRANT_MASKED_KERNEL="${XQDRANT_MASKED_KERNEL:-repack}"
 
   log "Unified paper bench host: $(host_line)"
   log "trials=${BENCH_TRIALS} queries=${BENCH_QUERIES} dims=${BENCH_DIMENSIONS}"

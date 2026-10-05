@@ -1,0 +1,7 @@
+== host B: Ryzen 5 220, WSL2; XQdrant ed5ca79 perf build (opt-level 3, no LTO); XQDRANT_MASKED_KERNEL=repack; 2026-10-05T23:29:26+01:00
+[K1 in-engine] kernel=repack SIFT1M Q=500 ef=128 best of 3, interleaved
+  plain full search   p50=1.051 ms
+  M1 ratio=0.25       p50=1.285 ms  x0.82 vs plain
+  M1 ratio=0.75       p50=1.612 ms  x0.65 vs plain
+  M1 ratio=1.0        p50=1.679 ms  x0.63 vs plain  identical sets 100.0%
+  -> results_2026-10-05_hostB\kernel_inengine.csv

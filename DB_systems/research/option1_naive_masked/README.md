@@ -29,7 +29,7 @@ python run_option1_recall_collapse.py --mode http \
 Full-GT recall@10 (SIFT, indicative): ~0.01 @0.1 → ~0.08 @0.25 → ~0.25 @0.5 → ~0.49 @0.75 → ~1.0 @1.0
 (same values as C1 coherence). The 2026-07-10 run predates the subspace-GT column.
 
-| SIFT, both GTs + coherence, T=5 (paper Fig. 4) | `2026-10-02_17-01-35__option1_naive_masked__recall_vs_ratio` |
+| SIFT, both GTs + coherence, T=5 (paper Fig. 3) | `2026-10-02_17-01-35__option1_naive_masked__recall_vs_ratio` |
 |---|---|
 
 Subspace-GT recall@10 (SIFT): 0.38 @0.1 → 0.77 @0.25 → 0.93 @0.5 → 0.98 @0.75 → 0.99 @1.0.

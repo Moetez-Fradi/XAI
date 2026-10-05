@@ -1,0 +1,39 @@
+Gnuplot not found, using plotters backend
+[masked_kernel_bench] measuring repack / gather / contiguous, T=5
+  wide dot    full=1536 d_sub=  32 repack        93.90 ± 7.60 ns/op
+  wide dot    full=1536 d_sub=  32 gather        97.67 ± 11.54 ns/op
+  wide dot    full=1536 d_sub=  32 contiguous    14.57 ± 1.46 ns/op
+  wide dot    full=1536 d_sub= 128 repack       211.02 ± 35.68 ns/op
+  wide dot    full=1536 d_sub= 128 gather       400.47 ± 42.08 ns/op
+  wide dot    full=1536 d_sub= 128 contiguous    49.28 ± 9.25 ns/op
+  wide dot    full=1536 d_sub= 192 repack       207.80 ± 12.19 ns/op
+  wide dot    full=1536 d_sub= 192 gather       387.92 ± 59.70 ns/op
+  wide dot    full=1536 d_sub= 192 contiguous    53.99 ± 2.06 ns/op
+  wide dot    full=1536 d_sub= 384 repack       313.98 ± 34.31 ns/op
+  wide dot    full=1536 d_sub= 384 gather       752.42 ± 199.90 ns/op
+  wide dot    full=1536 d_sub= 384 contiguous   104.58 ± 3.71 ns/op
+  wide dot    full=1536 d_sub= 768 repack       510.98 ± 27.83 ns/op
+  wide dot    full=1536 d_sub= 768 gather       957.56 ± 211.00 ns/op
+  wide dot    full=1536 d_sub= 768 contiguous   161.44 ± 8.24 ns/op
+  sift euclid full= 128 d_sub=  32 repack        36.07 ± 1.87 ns/op
+  sift euclid full= 128 d_sub=  32 gather        35.43 ± 1.69 ns/op
+  sift euclid full= 128 d_sub=  32 contiguous    11.96 ± 0.86 ns/op
+  sift euclid full= 128 d_sub=  96 repack        65.39 ± 2.89 ns/op
+  sift euclid full= 128 d_sub=  96 gather        75.89 ± 2.88 ns/op
+  sift euclid full= 128 d_sub=  96 contiguous    17.20 ± 2.14 ns/op
+  sift euclid full= 128 d_sub= 128 repack        82.00 ± 7.58 ns/op
+  sift euclid full= 128 d_sub= 128 gather       100.17 ± 3.48 ns/op
+  sift euclid full= 128 d_sub= 128 contiguous    17.12 ± 0.19 ns/op
+[masked_kernel_bench] wrote /home/moetez/xq/k1_simd_b/kernel_bench.csv
+[masked_kernel_bench] CSV_ONLY=1 — skipping Criterion groups
+Benchmarking csv_only_noop
+Benchmarking csv_only_noop: Warming up for 3.0000 s
+Benchmarking csv_only_noop: Collecting 100 samples in estimated 5.0000 s (5.8B iterations)
+Benchmarking csv_only_noop: Analyzing
+csv_only_noop           time:   [863.36 ps 869.46 ps 877.01 ps]
+                        change: [−1.6578% −0.4968% +0.7096%] (p = 0.42 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+

@@ -1,0 +1,4 @@
+== host B: Ryzen 5 220, WSL2; XQdrant ed5ca79 perf build (opt-level 3, no LTO); XQDRANT_MASKED_KERNEL=gather; 2026-10-05T23:30:52+01:00
+[ratio 1.0] kernel=gather SIFT1M Q=500 ef=128 best of 3, interleaved
+masked all layers (M1), all 128 dims     p50=1.596 ms  plain p50=1.035 ms  x0.65  identical result sets: 100.0%
+masked L=1, all 128 dims                 p50=1.583 ms  plain p50=1.035 ms  x0.65  identical result sets: 100.0%

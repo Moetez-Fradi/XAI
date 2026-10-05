@@ -1,0 +1,5 @@
+model name	: AMD Ryzen 5 220 w/ Radeon 740M Graphics
+6.18.33.2-microsoft-standard-WSL2
+rustc 1.99.0 (b940084d7 2026-09-28)
+bench source: XQdrant commit 6cb79ea (branch edbt27-k1-bench; engine code identical to ed5ca79)
+pinned: taskset -c 2; XQDRANT_KERNEL_BENCH_CSV_ONLY=1
