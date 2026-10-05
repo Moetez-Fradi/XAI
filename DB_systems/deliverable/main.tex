@@ -103,17 +103,11 @@ the harness and an experiment index that maps each claim to a script.
        <concept_desc>Information systems~Database query processing</concept_desc>
        <concept_significance>400</concept_significance>
    </concept>
-   <concept>
-       <concept_id>10010147.10010257.10010258.10010259.10010263</concept_id>
-       <concept_desc>Computing methodologies~Feature selection</concept_desc>
-       <concept_significance>300</concept_significance>
-   </concept>
 </ccs2012>
 \end{CCSXML}
 
 \ccsdesc[500]{Information systems~Nearest-neighbor search}
 \ccsdesc[400]{Information systems~Database query processing}
-\ccsdesc[300]{Computing methodologies~Feature selection}
 
 \keywords{vector databases, HNSW, approximate nearest neighbor,
   explainability, feature attribution, subspace search, masked distance, SIMD}
@@ -193,8 +187,7 @@ directly via SIMD gather loads.
 For Dot product, $s(\mathbf{q},\mathbf{v})=\sum_i q_i v_i$; Cosine applies the
 same decomposition after $\ell_2$ normalization; Euclidean and Manhattan admit
 analogous additive terms. Attribution is therefore exact accounting of the
-engine's own metric, not a surrogate explanation model such as
-SHAP~\cite{lundberg2017shap} or LIME~\cite{ribeiro2016lime}.
+engine's own metric, not an estimate (Section~\ref{sec:related}).
 
 \subsection{Subspace Coherence}
 \label{sec:coherence-def}
@@ -496,7 +489,7 @@ $1.42\times$, and $1.77\times$ at $D_{\mathrm{sub}}\in\{32,128,384,768\}$
 (Figure~\ref{fig:kernel}), but cannot close this gap. For masking to pay off,
 a masked distance must cost less than a full contiguous one, for example by
 laying registered focus dimensions out contiguously or by approximating
-distance comparisons~\cite{gao2023adsampling,chen2023finger}.
+distance comparisons~\cite{gao2023adsampling,chen2023finger,gao2024rabitq}.
 
 \begin{table}[htbp]
   \centering
@@ -608,23 +601,30 @@ Table~\ref{tab:keep} consolidates the verdict for each mechanism.
 
 \paragraph{Vector databases.} Milvus~\cite{wang2021milvus},
 Pinecone~\cite{pinecone2023}, and Qdrant~\cite{qdrant2024} expose ANN with
-filters and quantization but not native per-coordinate decompositions or
-layer-aware masked metrics; Pan et al.~\cite{pan2024survey} survey the design
-space. We add in-database attribution and query-time masked HNSW scoring
+filters and quantization; PASE~\cite{yang2020pase} and
+AnalyticDB-V~\cite{wei2020analyticdbv} bring ANN indexes into relational
+engines, and VBase~\cite{zhang2023vbase} unifies vector search with
+relational operators. Pan et al.~\cite{pan2024survey} survey the design
+space. None exposes per-coordinate score decompositions or layer-aware masked
+metrics. We add in-database attribution and query-time masked HNSW scoring
 inside an existing production graph index.
 
 \paragraph{ANN search.} FAISS~\cite{johnson2019faiss} and
-ScaNN~\cite{guo2020scann} optimize large-scale search, and Wang et
-al.~\cite{wang2021graphsurvey} compare graph indexes experimentally;
+ScaNN~\cite{guo2020scann} optimize large-scale search, and experimental
+studies compare ANN methods under common
+protocols~\cite{wang2021graphsurvey,aumuller2020annbench,echihabi2019hydra};
 explainability and dynamic subspace routing remain outside the index.
-ADSampling~\cite{gao2023adsampling} and FINGER~\cite{chen2023finger} speed up
-graph search by approximating distance comparisons; our latency results
-(Section~\ref{sec:eval-latency}) suggest masked search needs comparably cheap
-comparisons to pay off.
+ADSampling~\cite{gao2023adsampling}, FINGER~\cite{chen2023finger}, and
+RaBitQ~\cite{gao2024rabitq} speed up search by making distance comparisons
+cheaper; our latency results (Section~\ref{sec:eval-latency}) suggest masked
+search needs comparably cheap comparisons to pay off.
 
 \paragraph{Subspace and constrained search.} $k$-NN queries over arbitrary
 query-time subspaces have been studied with dedicated index
-structures~\cite{lian2008subspace,bernecker2010subspace}. Filtered graph
+structures~\cite{lian2008subspace,bernecker2010subspace}, and
+MUST~\cite{wang2024must} searches concatenated multimodal vectors under
+learned per-modality weights, of which a modality mask is a special case.
+Filtered graph
 search faces a related problem: when a predicate changes which points
 qualify, a graph built for the unconstrained query can lose navigability,
 which ACORN~\cite{patel2024acorn} and
@@ -632,12 +632,15 @@ Filtered-DiskANN~\cite{gollapudi2023filtered} address by changing graph
 construction. We instead measure what an unmodified full-space HNSW graph
 delivers under a query-time masked metric.
 
-\paragraph{Explainable AI.} SHAP and LIME~\cite{lundberg2017shap,ribeiro2016lime}
-approximate model behavior via sampling or local surrogates.
-Unlike those surrogate explainers, we exploit additive metric structure for
-deterministic, zero-variance attributions aligned with the engine's own ranking,
-closer to in-database OLAP rollups~\cite{gray1998data} than to sampling-based
-XAI.
+\paragraph{Explaining query answers.} Database work explains query results
+through causality and intervention over input
+tuples~\cite{meliou2010causality,roy2014explanations}. A similarity score is
+instead a sum of per-coordinate terms, the aggregate-of-grades score model of
+top-$k$ processing~\cite{fagin2003optimal}, so explaining it needs no search
+over inputs: attribution reports each coordinate's exact share of the score,
+as an OLAP roll-up reports each group's share of a total~\cite{gray1998data}.
+Model explainers such as SHAP and LIME~\cite{lundberg2017shap,ribeiro2016lime}
+estimate attributions by sampling or local surrogates instead.
 
 \paragraph{Dimension reduction and projected indexes.} Static projections or
 multi-index layouts differ from \emph{query-time} focus sets evaluated against
