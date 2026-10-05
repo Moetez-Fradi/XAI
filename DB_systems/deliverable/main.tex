@@ -33,6 +33,9 @@
 \usepackage{xcolor}
 \graphicspath{{figures/}}
 
+%% Let TeX loosen a line rather than push it into the margin (narrow columns).
+\setlength{\emergencystretch}{1.5em}
+
 %% Allow breaks after \_ so long identifiers wrap in-column.
 \newcommand{\breakablecode}[1]{%
   {\ttfamily
@@ -74,8 +77,8 @@ post-query extraction at encoder-scale widths ($D\in\{768,1536\}$).
 
 \emph{Masked-distance HNSW traversal} scores only the focus subspace during
 descent over an unmodified full-space graph, and evaluating it requires two
-ground truths. Against full-space ground truth, masked search on SIFT1M scores
-exactly the subspace/full-space $k$-NN \emph{coherence} ($0.012$ vs.\ $0.013$
+ground truths. Against full-space ground truth, masked search on SIFT1M matches
+the subspace/full-space $k$-NN \emph{coherence} ($0.012$ vs.\ $0.013$
 at $D_{\mathrm{sub}}/D=0.1$), a property of the data rather than a navigation
 failure. Against subspace ground truth, it finds the focus-metric neighbors
 with Recall@10 of at least $0.91$ when the focus set covers half the dimensions
@@ -110,7 +113,7 @@ the harness and an experiment index that maps each claim to a script.
 \ccsdesc[400]{Information systems~Database query processing}
 
 \keywords{vector databases, HNSW, approximate nearest neighbor,
-  explainability, feature attribution, subspace search, masked distance, SIMD}
+  score attribution, query explanation, subspace search, masked distance, SIMD}
 
 \maketitle
 
@@ -381,7 +384,12 @@ $50$). The relevant comparison is post-query extraction, the only
 alternative available to a client: Figure~\ref{fig:attribution-depth} shows
 in-database attribution holds a flat mean p50 of $3.85$--$4.02$\,ms
 ($\pm\!0.07$) across $m\in\{1,\ldots,50\}$ while post-query extraction sits at
-$6.87$--$7.03$\,ms ($\approx 1.78\times$). Figure~\ref{fig:subspace-rescore}
+$6.87$--$7.03$\,ms ($\approx 1.78\times$). These client-observed timings are
+free of the delayed-ACK stall noted above: the harness sends both
+multi-packet requests, the attribution query and the vector fetch, on fresh
+connections, and every p50 is far below $40$\,ms. The gap is what
+extraction adds: a second round trip, vector egress, and client-side
+computation. Figure~\ref{fig:subspace-rescore}
 shows that \texttt{nearest.focus} \emph{rescoring}, which reuses full-vector
 preselection, yields speedup $<1$ ($0.80$--$0.84$; $0.80$ in-engine on
 SIFT1M): it reduces the dimensionality of the arithmetic but not the
@@ -693,12 +701,13 @@ Source code (XQdrant fork of Qdrant) and the experiment harness are public:
   \setlength{\parsep}{0pt}
   \item Engine fork at the evaluated commit:
     \url{https://github.com/Moetez-Fradi/XQdrant/tree/ed5ca79}
-  \item Experiment index and scripts\pending{, plus canonical CSVs}:
-    \url{https://github.com/Moetez-Fradi/XAI/tree/main/DB_systems}
+  \item Experiment index and scripts:
+    \url{https://github.com/Moetez-Fradi/XAI/tree/EDBT27/DB_systems}
 \end{itemize}
 The harness contains the unified orchestration script, per-mechanism runners,
-plotting entry points for M1--M3, K1, C1, and V1, and build/run notes for the
-XQdrant binary and the vanilla Qdrant baseline. Neither repository uses access
+the in-engine latency checks, plotting entry points for M1--M3, K1, C1, and
+V1, and build/run notes for the XQdrant binary and the vanilla Qdrant
+baseline. Neither repository uses access
 monitoring.
 
 \bibliographystyle{ACM-Reference-Format}
